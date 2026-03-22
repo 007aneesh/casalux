@@ -25,13 +25,18 @@
  */
 import { Hono } from 'hono'
 import { requireAuth, requireRole } from '@casalux/auth'
-import { ListingService }    from '../services/listing.service.js'
-import { ListingController } from '../controllers/listing.controller.js'
-import { bookingController } from './bookings.js'
+import { ListingService }       from '../services/listing.service.js'
+import { ListingController }    from '../controllers/listing.controller.js'
+import { OnboardingService }    from '../services/onboarding.service.js'
+import { OnboardingController } from '../controllers/onboarding.controller.js'
+import { bookingController }    from './bookings.js'
 import { cacheService, searchService, queueService } from '../container.js'
 
 const service    = new ListingService(cacheService, searchService, queueService)
 const controller = new ListingController(service)
+
+const onboardingService    = new OnboardingService(queueService)
+const onboardingController = new OnboardingController(onboardingService)
 
 export const hostRouter = new Hono()
 
@@ -58,3 +63,16 @@ hostRouter.post('/booking-requests/pre-approve',     (c) => bookingController.pr
 hostRouter.get('/booking-requests',                  (c) => bookingController.getHostRequests(c))
 hostRouter.post('/booking-requests/:id/approve',     (c) => bookingController.approveRequest(c))
 hostRouter.post('/booking-requests/:id/decline',     (c) => bookingController.declineRequest(c))
+
+// ─── Host onboarding (8-step wizard) ─────────────────────────────────────────
+// Note: onboarding routes only need requireAuth() — not requireRole('host')
+//       because the user becomes a host AFTER completing onboarding.
+hostRouter.post(  '/onboarding/start',                        requireAuth(), (c) => onboardingController.start(c))
+hostRouter.get(   '/onboarding/:sessionId',                   requireAuth(), (c) => onboardingController.getSession(c))
+hostRouter.patch( '/onboarding/:sessionId/space',             requireAuth(), (c) => onboardingController.saveSpace(c))
+hostRouter.patch( '/onboarding/:sessionId/amenities',         requireAuth(), (c) => onboardingController.saveAmenities(c))
+hostRouter.post(  '/onboarding/:sessionId/photos',            requireAuth(), (c) => onboardingController.savePhotos(c))
+hostRouter.patch( '/onboarding/:sessionId/details',           requireAuth(), (c) => onboardingController.saveDetails(c))
+hostRouter.patch( '/onboarding/:sessionId/pricing',           requireAuth(), (c) => onboardingController.savePricing(c))
+hostRouter.patch( '/onboarding/:sessionId/availability',      requireAuth(), (c) => onboardingController.saveAvailability(c))
+hostRouter.post(  '/onboarding/:sessionId/submit',            requireAuth(), (c) => onboardingController.submit(c))

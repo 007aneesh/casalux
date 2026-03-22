@@ -13,12 +13,18 @@
  *       BEFORE /:id to prevent Hono matching them as the :id param.
  */
 import { Hono } from 'hono'
-import { ListingService }    from '../services/listing.service.js'
-import { ListingController } from '../controllers/listing.controller.js'
+import { requireAuth } from '../middleware/auth.js'
+import { ListingService }     from '../services/listing.service.js'
+import { ListingController }  from '../controllers/listing.controller.js'
+import { WishlistService }    from '../services/wishlist.service.js'
+import { WishlistController } from '../controllers/wishlist.controller.js'
 import { cacheService, searchService, queueService } from '../container.js'
 
 const service    = new ListingService(cacheService, searchService, queueService)
 const controller = new ListingController(service)
+
+const wishlistService    = new WishlistService(cacheService)
+const wishlistController = new WishlistController(wishlistService)
 
 export const listingsRouter = new Hono()
 
@@ -30,7 +36,10 @@ listingsRouter.get('/recommended',   (c) => controller.getRecommended(c))
 listingsRouter.get('/', (c) => controller.getListings(c))
 
 // Single listing + nested resources
-listingsRouter.get('/:id',                    (c) => controller.getListingById(c))
-listingsRouter.get('/:id/availability',       (c) => controller.getAvailability(c))
-listingsRouter.get('/:id/pricing-preview',    (c) => controller.getPricingPreview(c))
-listingsRouter.get('/:id/reviews',            (c) => controller.getReviews(c))
+listingsRouter.get( '/:id',                 (c) => controller.getListingById(c))
+listingsRouter.get( '/:id/availability',    (c) => controller.getAvailability(c))
+listingsRouter.get( '/:id/pricing-preview', (c) => controller.getPricingPreview(c))
+listingsRouter.get( '/:id/reviews',         (c) => controller.getReviews(c))
+
+// Quick-save (auth required — heart button on listing cards)
+listingsRouter.post('/:id/save', requireAuth(), (c) => wishlistController.quickSave(c))

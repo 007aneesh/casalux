@@ -15,6 +15,8 @@ import { adminRouter } from './routes/admin.js'
 import { usersRouter } from './routes/users.js'
 import { locationsRouter } from './routes/locations.js'
 import { messagesRouter } from './routes/messages.js'
+import { reviewsRouter } from './routes/reviews.js'
+import { searchRouter } from './routes/search.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { rateLimiter } from './middleware/rate-limiter.js'
 import { startSearchIndexingWorker } from './workers/search-indexing.worker.js'
@@ -43,6 +45,8 @@ v1.route('/admin', adminRouter)
 v1.route('/users', usersRouter)
 v1.route('/locations', locationsRouter)
 v1.route('/messages', messagesRouter)
+v1.route('/reviews', reviewsRouter)
+v1.route('/search', searchRouter)
 
 app.route('/api/v1', v1)
 

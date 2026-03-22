@@ -18,9 +18,11 @@
  *   GET   /api/v1/users/me/bookings
  */
 import { Hono } from 'hono'
-import { BookingService } from '../services/booking.service.js'
+import { BookingService }   from '../services/booking.service.js'
 import { BookingController } from '../controllers/booking.controller.js'
-import { requireAuth } from '../middleware/auth.js'
+import { ReviewService }    from '../services/review.service.js'
+import { ReviewController } from '../controllers/review.controller.js'
+import { requireAuth }      from '../middleware/auth.js'
 import { cacheService, paymentService, queueService } from '../container.js'
 
 // ─── Shared service + controller instance ─────────────────────────────────────
@@ -29,13 +31,20 @@ const controller = new BookingController(service)
 
 export { service as bookingService, controller as bookingController }
 
+const reviewService    = new ReviewService(cacheService, queueService)
+const reviewController = new ReviewController(reviewService)
+
 export const bookingsRouter = new Hono()
 
 // POST /initiate  — Instant Book
 bookingsRouter.post('/initiate', requireAuth(), (c) => controller.initiateBooking(c))
 
-// GET /:id/status  — before /:id to avoid param collision
-bookingsRouter.get('/:id/status',               requireAuth(), (c) => controller.getBookingStatus(c))
-bookingsRouter.get('/:id/cancellation-preview', requireAuth(), (c) => controller.getCancellationPreview(c))
-bookingsRouter.post('/:id/cancel',              requireAuth(), (c) => controller.cancelBooking(c))
-bookingsRouter.get('/:id',                      requireAuth(), (c) => controller.getBooking(c))
+// Static sub-paths BEFORE /:id to avoid param collision
+bookingsRouter.get( '/:id/status',               requireAuth(), (c) => controller.getBookingStatus(c))
+bookingsRouter.get( '/:id/cancellation-preview', requireAuth(), (c) => controller.getCancellationPreview(c))
+bookingsRouter.post('/:id/cancel',               requireAuth(), (c) => controller.cancelBooking(c))
+
+// Review — guests can review a completed booking
+bookingsRouter.post('/:id/review', requireAuth(), (c) => reviewController.writeReview(c))
+
+bookingsRouter.get( '/:id',                      requireAuth(), (c) => controller.getBooking(c))
