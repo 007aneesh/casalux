@@ -1,0 +1,11 @@
+{
+  "$comment": "Used only for `pnpm build` (tsc --project tsconfig.build.json). Outputs Node.js-compatible ESM.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "verbatimModuleSyntax": true
+  },
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+}

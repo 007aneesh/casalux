@@ -1,0 +1,51 @@
+{
+  "name": "@casalux/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate --schema=../../packages/db/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=../../packages/db/prisma/schema.prisma",
+    "db:seed": "tsx ../../packages/db/src/seed.ts"
+  },
+  "dependencies": {
+    "@casalux/auth": "workspace:*",
+    "@casalux/db": "workspace:*",
+    "@casalux/types": "workspace:*",
+    "@casalux/utils": "workspace:*",
+    "@casalux/services-cache": "workspace:*",
+    "@casalux/services-email": "workspace:*",
+    "@casalux/services-payment": "workspace:*",
+    "@casalux/services-queue": "workspace:*",
+    "@casalux/services-search": "workspace:*",
+    "@casalux/services-storage": "workspace:*",
+    "hono": "^4.3.0",
+    "@hono/node-server": "^1.11.0",
+    "@hono/zod-validator": "^0.2.2",
+    "zod": "^3.23.4",
+    "ioredis": "^5.3.2",
+    "bullmq": "^5.7.0",
+    "@clerk/backend": "^1.3.0",
+    "dotenv": "^16.4.5",
+    "pino": "^9.1.0",
+    "pino-pretty": "^11.0.0"
+  },
+  "devDependencies": {
+    "@casalux/config": "workspace:*",
+    "@types/node": "^20.12.0",
+    "typescript": "^5.4.5",
+    "tsx": "^4.9.3",
+    "vitest": "^1.6.0",
+    "eslint": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

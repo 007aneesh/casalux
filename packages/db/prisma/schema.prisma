@@ -1,0 +1,663 @@
+// ============================================================
+// CasaLux Prisma Schema
+// PRD Section 15 — Database Schema
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  guest
+  host
+  admin
+  super_admin
+}
+
+enum VerificationStatus {
+  unverified
+  verified
+}
+
+enum PropertyType {
+  apartment
+  house
+  villa
+  cabin
+  unique
+  hotel
+}
+
+enum RoomType {
+  entire_place
+  private_room
+  shared_room
+}
+
+enum ListingStatus {
+  draft
+  active
+  paused
+  archived
+  flagged
+}
+
+enum CancellationPolicy {
+  flexible
+  moderate
+  strict
+  super_strict
+}
+
+enum BookingStatus {
+  pending_request
+  host_approved
+  pending_payment
+  confirmed
+  completed
+  host_declined
+  guest_cancelled
+  cancelled_by_host
+  cancelled_by_admin
+  request_expired
+  payment_window_expired
+  payment_failed
+  payment_expired
+  disputed
+}
+
+enum BookingRequestStatus {
+  pending
+  approved
+  declined
+  guest_cancelled
+  expired
+  pre_approved
+  payment_window_expired
+}
+
+enum PayoutStatus {
+  pending
+  initiated
+  settled
+}
+
+enum RefundStatus {
+  none
+  requested
+  partial
+  full
+  processed
+}
+
+enum DiscountType {
+  weekly_discount
+  monthly_discount
+  early_bird
+  last_minute
+  promo_code
+  new_listing_promo
+  seasonal
+  loyalty
+}
+
+enum AvailabilityRuleType {
+  blocked
+  available
+  min_nights_override
+  price_override
+  advance_notice
+  preparation_time
+}
+
+enum HostApplicationStatus {
+  in_progress
+  submitted
+  approved
+  rejected
+  auto_approved
+}
+
+enum DeclineReason {
+  dates_unavailable
+  guests_dont_fit
+  not_a_good_fit
+  other
+}
+
+enum PaymentProvider {
+  stripe
+  razorpay
+  paypal
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id                 String             @id @default(cuid())
+  clerkId            String             @unique
+  email              String             @unique
+  firstName          String
+  lastName           String
+  profileImageUrl    String?
+  role               UserRole           @default(guest)
+  verificationStatus VerificationStatus @default(unverified)
+  isBanned           Boolean            @default(false)
+  bannedReason       String?
+  deletedAt          DateTime?          // soft-delete (preserve for audit)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  hostProfile      HostProfile?
+  hostApplications HostApplication[]
+  guestBookings    Booking[]           @relation("GuestBookings")
+  wishlists        Wishlist[]
+  reviews          Review[]
+  searchHistory    SearchHistory[]
+  listingViews     ListingView[]
+  auditLogs        AuditLog[]
+  messagesSent     Message[]
+  guestThreads     MessageThread[]     @relation("GuestThreads")
+  hostThreads      MessageThread[]     @relation("HostThreads")
+  guestRequests    BookingRequest[]    @relation("GuestRequests")
+
+  @@index([role])
+  @@index([clerkId])
+  @@index([email])
+}
+
+model HostProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  bio                   String?
+  responseRate          Float    @default(0)
+  avgResponseTimeHours  Float    @default(0)
+  isSuperhost           Boolean  @default(false)
+  superhostGrantedAt    DateTime?
+  totalListings         Int      @default(0)
+  hostCancellationCount Int      @default(0)    // for admin review trigger
+  responseWindowHours   Int      @default(24)   // configurable per host
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  listings Listing[]
+  earnings HostEarning[]
+
+  @@index([isSuperhost])
+}
+
+model HostApplication {
+  id          String                @id @default(cuid())
+  userId      String
+  status      HostApplicationStatus @default(in_progress)
+  sessionData Json                  @default("{}")  // step-by-step onboarding data
+  rejectionReason String?
+  reviewedBy  String?               // admin userId who reviewed
+  reviewedAt  DateTime?
+  submittedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+}
+
+model Listing {
+  id          String        @id @default(cuid())
+  hostId      String
+  title       String        @db.VarChar(100)
+  description String        @db.Text
+  propertyType PropertyType
+  roomType    RoomType
+  status      ListingStatus @default(draft)
+
+  // Location
+  address     Json          // { street, city, state, country, zip }
+  lat         Decimal       @db.Decimal(10, 7)
+  lng         Decimal       @db.Decimal(10, 7)
+
+  // Media
+  images      Json[]        // ListingImage[]
+
+  // Pricing (all in cents)
+  basePrice    Int           // cents
+  currency     String        @default("INR")
+  cleaningFee  Int           @default(0)
+
+  // Stay rules
+  minNights    Int           @default(1)
+  maxNights    Int?
+  maxGuests    Int
+  bedrooms     Int           @default(0)
+  beds         Int           @default(0)
+  baths        Int           @default(0)
+
+  // Booking settings
+  instantBook        Boolean  @default(false)
+  checkInTime        String   @default("15:00")
+  checkOutTime       String   @default("11:00")
+  cancellationPolicy CancellationPolicy @default(flexible)
+
+  // Guest requirements (for instantBook listings)
+  requireVerifiedId      Boolean @default(false)
+  requireProfilePhoto    Boolean @default(false)
+  requirePositiveReviews Boolean @default(false)
+
+  // Computed / materialized
+  avgRating    Decimal @default(0) @db.Decimal(3, 2)
+  totalReviews Int     @default(0)
+
+  // ES quick filter tags (precomputed)
+  quickFilterTags String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  host              HostProfile         @relation(fields: [hostId], references: [id])
+  amenities         ListingAmenity[]
+  availabilityRules AvailabilityRule[]
+  discounts         Discount[]
+  bookings          Booking[]
+  bookingRequests   BookingRequest[]
+  reviews           Review[]
+  mediaAssets       MediaAsset[]
+  listingViews      ListingView[]
+  wishlistItems     WishlistItem[]
+
+  @@index([status, lat, lng])
+  @@index([hostId, status])
+  @@index([basePrice])
+  @@index([avgRating(sort: Desc), totalReviews(sort: Desc)])
+}
+
+model Amenity {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+  category String
+
+  listings ListingAmenity[]
+}
+
+model ListingAmenity {
+  listingId String
+  amenityId String
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  amenity Amenity @relation(fields: [amenityId], references: [id])
+
+  @@id([listingId, amenityId])
+}
+
+model AvailabilityRule {
+  id          String               @id @default(cuid())
+  listingId   String
+  type        AvailabilityRuleType
+  startDate   DateTime             @db.Date
+  endDate     DateTime             @db.Date
+  value       Int?                 // depends on type: price override (cents), min nights, advance notice days, prep days
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, startDate, endDate])
+}
+
+model Discount {
+  id          String       @id @default(cuid())
+  listingId   String?      // null = platform-wide
+  hostId      String?      // null = admin-created
+  type        DiscountType
+  label       String
+  value       Int          // percent (0-100) or flat cents
+  isPercent   Boolean      @default(true)
+  priority    Int          @default(10)
+  isActive    Boolean      @default(true)
+
+  // Condition rules
+  minNights       Int?
+  maxUses         Int?        // for promo_code
+  usedCount       Int         @default(0)
+  code            String?     @unique // promo_code only
+  startDate       DateTime?
+  endDate         DateTime?
+  daysInAdvance   Int?        // early_bird: booked X+ days before
+  daysUntilCheckIn Int?       // last_minute: checkIn within N days
+  minPastBookings Int?        // loyalty: N past completed bookings
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([listingId, isActive])
+  @@index([code])
+}
+
+model Booking {
+  id               String        @id @default(cuid())
+  bookingRequestId String?       // null for Instant Book
+  listingId        String
+  guestId          String        // Clerk userId
+  hostId           String        // denormalized
+  checkIn          DateTime      @db.Date
+  checkOut         DateTime      @db.Date
+  nights           Int
+  guests           Int
+  agreedToHouseRules      Boolean @default(false)
+  guestVerifiedAtBooking  Boolean @default(false)
+
+  status       BookingStatus @default(pending_payment)
+  refundStatus RefundStatus? @default(none)
+
+  // Pricing snapshot (cents)
+  baseSubtotal      Int
+  discountAmount    Int    @default(0)
+  discountsApplied  Json   @default("[]")
+  cleaningFee       Int    @default(0)
+  platformServiceFee Int
+  taxes             Int    @default(0)
+  totalAmount       Int
+  hostPayout        Int
+  currency          String @default("INR")
+
+  // Payment
+  paymentProvider         PaymentProvider
+  paymentOrderId          String
+  paymentId               String?
+  idempotencyKey          String  @unique // SHA256(listingId+guestId+checkIn+checkOut)
+  payoutId                String?
+  payoutStatus            PayoutStatus @default(pending)
+
+  // Cancellation
+  cancellationReason      String?
+  cancelledBy             String? // guest | host | admin | system
+  hostCancellationPenalty Int?
+  refundAmount            Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing        Listing         @relation(fields: [listingId], references: [id])
+  guest          User            @relation("GuestBookings", fields: [guestId], references: [clerkId])
+  bookingRequest BookingRequest? @relation(fields: [bookingRequestId], references: [id])
+  paymentEvents  PaymentEvent[]
+  earnings       HostEarning[]
+  review         Review?
+  messageThread  MessageThread?
+
+  @@index([listingId, checkIn, checkOut, status])
+  @@index([guestId, status])
+  @@index([hostId, status])
+  @@index([idempotencyKey])
+}
+
+model BookingRequest {
+  id        String               @id @default(cuid())
+  listingId String
+  guestId   String               // Clerk userId
+  hostId    String               // denormalized
+  checkIn   DateTime             @db.Date
+  checkOut  DateTime             @db.Date
+  nights    Int
+  guests    Int
+  status    BookingRequestStatus @default(pending)
+
+  guestMessage String?       @db.VarChar(1000)
+  hostMessage  String?       @db.VarChar(1000)
+  declineReason DeclineReason?
+  priceSnapshot Json          // PricingBreakdown locked at request time
+
+  requestedAt            DateTime  @default(now())
+  respondedAt            DateTime?
+  expiresAt              DateTime
+  paymentWindowExpiresAt DateTime?
+
+  // BullMQ job IDs for cancellation
+  expireJobId        String?
+  payWindowJobId     String?
+  reminderJobId18h   String?
+  reminderJobId23h   String?
+
+  bookingId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing       Listing         @relation(fields: [listingId], references: [id])
+  guest         User            @relation("GuestRequests", fields: [guestId], references: [clerkId])
+  bookings      Booking[]
+  messageThread MessageThread?
+
+  @@index([listingId, status])
+  @@index([guestId, status])
+  @@index([hostId, status])
+  @@index([expiresAt, status])
+}
+
+model PaymentEvent {
+  id              String @id @default(cuid())
+  bookingId       String
+  provider        String
+  providerEventId String @unique   // DB-level idempotency
+  eventType       String
+  payload         Json
+  processedAt     DateTime?
+  status          String  @default("pending") // pending | done | failed
+
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([providerEventId])
+}
+
+model HostEarning {
+  id          String       @id @default(cuid())
+  hostId      String
+  bookingId   String
+  amount      Int          // cents
+  currency    String       @default("INR")
+  payoutStatus PayoutStatus @default(pending)
+  payoutId    String?
+  payoutDate  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  host    HostProfile @relation(fields: [hostId], references: [id])
+  booking Booking     @relation(fields: [bookingId], references: [id])
+
+  @@index([hostId, payoutStatus])
+}
+
+model Wishlist {
+  id     String @id @default(cuid())
+  userId String
+  name   String @db.VarChar(100)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User           @relation(fields: [userId], references: [id])
+  items WishlistItem[]
+
+  @@index([userId])
+}
+
+model WishlistItem {
+  wishlistId String
+  listingId  String
+  addedAt    DateTime @default(now())
+
+  wishlist Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  listing  Listing  @relation(fields: [listingId], references: [id])
+
+  @@id([wishlistId, listingId])
+  @@index([listingId])
+}
+
+model SearchHistory {
+  id         String   @id @default(cuid())
+  userId     String?
+  sessionId  String?  // for anonymous searches
+  query      String
+  location   String?
+  lat        Decimal? @db.Decimal(10, 7)
+  lng        Decimal? @db.Decimal(10, 7)
+  resultCount Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model ListingView {
+  id        String   @id @default(cuid())
+  listingId String
+  userId    String?
+  sessionId String?
+  durationSec Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([listingId, createdAt])
+  @@index([userId])
+}
+
+model Review {
+  id        String  @id @default(cuid())
+  listingId String
+  bookingId String  @unique
+  guestId   String
+  rating    Decimal @db.Decimal(2, 1) // 1.0 - 5.0
+  comment   String  @db.Text
+
+  // Sub-ratings (optional)
+  cleanlinessRating Decimal? @db.Decimal(2, 1)
+  accuracyRating    Decimal? @db.Decimal(2, 1)
+  locationRating    Decimal? @db.Decimal(2, 1)
+  checkInRating     Decimal? @db.Decimal(2, 1)
+  valueRating       Decimal? @db.Decimal(2, 1)
+
+  hostResponse      String? @db.Text
+  hostRespondedAt   DateTime?
+
+  isVisible Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id])
+  guest   User    @relation(fields: [guestId], references: [clerkId])
+
+  @@index([listingId, isVisible])
+  @@index([guestId])
+}
+
+model MediaAsset {
+  id           String @id @default(cuid())
+  publicId     String @unique // Cloudinary public_id
+  url          String
+  secureUrl    String
+  resourceType String @default("image")
+  format       String
+  bytes        Int
+  width        Int?
+  height       Int?
+
+  // Polymorphic association
+  entityType   String  // listing | host | user
+  entityId     String
+  listingId    String?
+  isPrimary    Boolean @default(false)
+  order        Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  listing Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([listingId])
+}
+
+model MessageThread {
+  id               String   @id @default(cuid())
+  bookingRequestId String?  @unique
+  bookingId        String?  @unique
+  guestId          String
+  hostId           String
+  lastMessageAt    DateTime @default(now())
+  unreadCountGuest Int      @default(0)
+  unreadCountHost  Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookingRequest BookingRequest? @relation(fields: [bookingRequestId], references: [id])
+  booking        Booking?        @relation(fields: [bookingId], references: [id])
+  guest          User            @relation("GuestThreads", fields: [guestId], references: [clerkId])
+  host           User            @relation("HostThreads", fields: [hostId], references: [clerkId])
+  messages       Message[]
+
+  @@index([guestId, lastMessageAt])
+  @@index([hostId, lastMessageAt])
+}
+
+model Message {
+  id       String  @id @default(cuid())
+  threadId String
+  senderId String  // Clerk userId
+  body     String  @db.VarChar(3000)
+  isRead   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User          @relation(fields: [senderId], references: [clerkId])
+
+  @@index([threadId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String   // Clerk userId of admin
+  action     String   // e.g. "listing.flag", "user.ban", "host.approve"
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+
+  createdAt DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [clerkId])
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}

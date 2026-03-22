@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-native",
+    "noEmit": true,
+    "paths": {
+      "@casalux/types":            ["../../packages/types/src/index.ts"],
+      "@casalux/utils":            ["../../packages/utils/src/index.ts"],
+      "@casalux/ui":               ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}
