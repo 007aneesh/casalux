@@ -36,7 +36,7 @@ export class ResendAdapter implements IEmailService {
       subject,
       // In production: use react-email templates compiled to HTML
       html: `<p>Template: ${params.template}</p><pre>${JSON.stringify(params.data, null, 2)}</pre>`,
-      replyTo: params.replyTo,
+      reply_to: params.replyTo,
     })
   }
 }

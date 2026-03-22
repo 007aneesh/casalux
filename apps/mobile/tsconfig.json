@@ -6,6 +6,8 @@
     "moduleResolution": "bundler",
     "jsx": "react-native",
     "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
     "paths": {
       "@casalux/types":            ["../../packages/types/src/index.ts"],
       "@casalux/utils":            ["../../packages/utils/src/index.ts"],

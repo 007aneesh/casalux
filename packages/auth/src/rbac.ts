@@ -14,7 +14,7 @@ import type { MiddlewareHandler } from 'hono'
 import type { UserRole } from '@casalux/types'
 import { db } from '@casalux/db'
 
-type ResourceType = 'listing' | 'booking' | 'booking_request' | 'host_application'
+export type ResourceType = 'listing' | 'booking' | 'booking_request' | 'host_application'
 
 /**
  * requireRole — 403 if the authenticated user's role is not in the allowed list.

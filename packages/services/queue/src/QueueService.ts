@@ -4,9 +4,13 @@
  *
  * CRITICAL: payment-events queue MUST have concurrency: 1 (serial processing).
  * This is intentional — see PRD Section 5.3 warning.
+ *
+ * NOTE: We do NOT import ioredis here. BullMQ bundles its own internal copy of ioredis
+ * and its type definitions conflict with a separately-installed ioredis package in pnpm
+ * workspaces (they resolve to different paths). Instead we pass a plain ConnectionOptions
+ * object so BullMQ manages its own connection internally.
  */
-import { Queue, Worker, type JobsOptions, type Processor } from 'bullmq'
-import IORedis from 'ioredis'
+import { Queue, Worker, type JobsOptions, type Processor, type ConnectionOptions } from 'bullmq'
 
 interface QueueConfig {
   redisUrl: string
@@ -14,43 +18,43 @@ interface QueueConfig {
 
 // ─── Queue Name Constants (PRD Section 5.3) ──────────────────────────────────
 export const QUEUES = {
-  SEARCH_INDEXING: 'search-indexing',
+  SEARCH_INDEXING:  'search-indexing',
   MEDIA_PROCESSING: 'media-processing',
-  EMAIL: 'email',
-  NOTIFICATIONS: 'notifications',
-  PAYMENT_EVENTS: 'payment-events',   // concurrency: 1 — DO NOT CHANGE
-  ANALYTICS: 'analytics',
-  HOST_COMPUTE: 'host-compute',
+  EMAIL:            'email',
+  NOTIFICATIONS:    'notifications',
+  PAYMENT_EVENTS:   'payment-events',   // concurrency: 1 — DO NOT CHANGE
+  ANALYTICS:        'analytics',
+  HOST_COMPUTE:     'host-compute',
   BOOKING_REQUESTS: 'booking-requests',
-  BOOKINGS: 'bookings',
+  BOOKINGS:         'bookings',
 } as const
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES]
 
 // ─── Concurrency map (PRD Section 5.3) ───────────────────────────────────────
 const CONCURRENCY: Record<QueueName, number> = {
-  [QUEUES.SEARCH_INDEXING]: 5,
+  [QUEUES.SEARCH_INDEXING]:  5,
   [QUEUES.MEDIA_PROCESSING]: 3,
-  [QUEUES.EMAIL]: 10,
-  [QUEUES.NOTIFICATIONS]: 10,
-  [QUEUES.PAYMENT_EVENTS]: 1,   // INTENTIONAL — serial, no race conditions
-  [QUEUES.ANALYTICS]: 20,
-  [QUEUES.HOST_COMPUTE]: 2,
+  [QUEUES.EMAIL]:            10,
+  [QUEUES.NOTIFICATIONS]:    10,
+  [QUEUES.PAYMENT_EVENTS]:   1,   // INTENTIONAL — serial, no race conditions
+  [QUEUES.ANALYTICS]:        20,
+  [QUEUES.HOST_COMPUTE]:     2,
   [QUEUES.BOOKING_REQUESTS]: 5,
-  [QUEUES.BOOKINGS]: 5,
+  [QUEUES.BOOKINGS]:         5,
 }
 
 // ─── Retry config ─────────────────────────────────────────────────────────────
 const RETRY: Record<QueueName, number> = {
-  [QUEUES.SEARCH_INDEXING]: 3,
+  [QUEUES.SEARCH_INDEXING]:  3,
   [QUEUES.MEDIA_PROCESSING]: 3,
-  [QUEUES.EMAIL]: 5,
-  [QUEUES.NOTIFICATIONS]: 2,
-  [QUEUES.PAYMENT_EVENTS]: 5,
-  [QUEUES.ANALYTICS]: 1,
-  [QUEUES.HOST_COMPUTE]: 2,
+  [QUEUES.EMAIL]:            5,
+  [QUEUES.NOTIFICATIONS]:    2,
+  [QUEUES.PAYMENT_EVENTS]:   5,
+  [QUEUES.ANALYTICS]:        1,
+  [QUEUES.HOST_COMPUTE]:     2,
   [QUEUES.BOOKING_REQUESTS]: 3,
-  [QUEUES.BOOKINGS]: 3,
+  [QUEUES.BOOKINGS]:         3,
 }
 
 export interface JobPayload {
@@ -59,11 +63,20 @@ export interface JobPayload {
 }
 
 export class QueueService {
-  private connection: IORedis
+  /** Plain options object — BullMQ creates its own internal ioredis connection from this. */
+  private connectionOptions: ConnectionOptions
   private queues: Map<string, Queue> = new Map()
 
   constructor(config: QueueConfig) {
-    this.connection = new IORedis(config.redisUrl, { maxRetriesPerRequest: null })
+    const url = new URL(config.redisUrl)
+    this.connectionOptions = {
+      host:                url.hostname,
+      port:                parseInt(url.port || '6379', 10),
+      password:            url.password || undefined,
+      // Required by BullMQ: disables ioredis's internal retry-on-fail so
+      // BullMQ can handle reconnection itself.
+      maxRetriesPerRequest: null,
+    } as ConnectionOptions
   }
 
   private getQueue(name: QueueName): Queue {
@@ -71,12 +84,12 @@ export class QueueService {
       this.queues.set(
         name,
         new Queue(name, {
-          connection: this.connection,
+          connection: this.connectionOptions,
           defaultJobOptions: {
             attempts: RETRY[name],
             backoff: { type: 'exponential', delay: 1000 },
             removeOnComplete: { count: 1000 },
-            removeOnFail: { count: 5000 },
+            removeOnFail:     { count: 5000 },
           },
         })
       )
@@ -89,7 +102,7 @@ export class QueueService {
     job: JobPayload,
     opts?: JobsOptions
   ): Promise<string> {
-    const q = this.getQueue(queue)
+    const q      = this.getQueue(queue)
     const result = await q.add(job.type, job.data, opts)
     return result.id ?? ''
   }
@@ -108,19 +121,18 @@ export class QueueService {
     handler: Processor<any, any, string>
   ): Worker {
     return new Worker(queue, handler, {
-      connection: this.connection,
+      connection:  this.connectionOptions,
       concurrency: CONCURRENCY[queue],
     })
   }
 
   async removeJob(queue: QueueName, jobId: string): Promise<void> {
-    const q = this.getQueue(queue)
+    const q   = this.getQueue(queue)
     const job = await q.getJob(jobId)
     if (job) await job.remove()
   }
 
   async disconnect(): Promise<void> {
-    for (const q of this.queues.values()) await q.close()
-    await this.connection.quit()
+    await Promise.all([...this.queues.values()].map((q) => q.close()))
   }
 }

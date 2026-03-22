@@ -17,6 +17,8 @@ import { locationsRouter } from './routes/locations.js'
 import { messagesRouter } from './routes/messages.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { rateLimiter } from './middleware/rate-limiter.js'
+import { startSearchIndexingWorker } from './workers/search-indexing.worker.js'
+import { startPaymentEventsWorker } from './workers/payment-events.worker.js'
 
 const app = new Hono()
 
@@ -46,6 +48,10 @@ app.route('/api/v1', v1)
 
 // Global error handler
 app.onError(errorHandler)
+
+// Start BullMQ workers
+startSearchIndexingWorker()
+startPaymentEventsWorker()   // concurrency=1 — payment state transitions serialised
 
 const port = parseInt(process.env['PORT'] ?? '3001', 10)
 

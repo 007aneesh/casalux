@@ -126,4 +126,6 @@ export const CacheKeys = {
   threadUnread: (userId: string) => `thread:unread:${userId}`,
   paySession: (orderId: string) => `pay:${orderId}`,
   rtbRemind: (requestId: string, stage: string) => `rtb:remind:${requestId}:${stage}`,
+  requestExpireJob: (requestId: string) => `job:req-expire:${requestId}`,
+  paymentWindowJob: (requestId: string) => `job:pw-expire:${requestId}`,
 } as const

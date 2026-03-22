@@ -4,6 +4,7 @@ export type ListingStatus = 'draft' | 'active' | 'paused' | 'archived' | 'flagge
 export type CancellationPolicy = 'flexible' | 'moderate' | 'strict' | 'super_strict'
 
 export type UserRole = 'guest' | 'host' | 'admin' | 'super_admin'
+export type VerificationStatus = 'unverified' | 'verified'
 
 export type BookingStatus =
   | 'pending_request'

@@ -11,6 +11,9 @@
       "default": "./src/index.ts"
     }
   },
+  "dependencies": {
+    "ioredis": "^5.3.2"
+  },
   "devDependencies": {
     "@casalux/config": "workspace:*",
     "typescript": "^5.4.5"

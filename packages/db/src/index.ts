@@ -13,3 +13,24 @@ if (process.env['NODE_ENV'] !== 'production') globalForPrisma.prisma = db
 
 export { Prisma } from '@prisma/client'
 export type { PrismaClient } from '@prisma/client'
+
+// ─── Enum types — single source of truth lives in @casalux/types ─────────────
+// Re-exported here so DB-layer code can import from one place (@casalux/db)
+// rather than mixing @casalux/types and @casalux/db imports.
+export type {
+  UserRole,
+  VerificationStatus,
+  PropertyType,
+  RoomType,
+  ListingStatus,
+  CancellationPolicy,
+  BookingStatus,
+  BookingRequestStatus,
+  PayoutStatus,
+  RefundStatus,
+  DiscountType,
+  AvailabilityRuleType,
+  HostApplicationStatus,
+  DeclineReason,
+  PaymentProvider,
+} from '@casalux/types'

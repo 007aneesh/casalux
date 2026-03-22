@@ -2,7 +2,6 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
     "paths": {
       "@casalux/types":            ["../../packages/types/src/index.ts"],
       "@casalux/utils":            ["../../packages/utils/src/index.ts"],

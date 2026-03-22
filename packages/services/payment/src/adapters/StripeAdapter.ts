@@ -72,7 +72,7 @@ export class StripeAdapter implements IPaymentService {
     return {
       eventId: event.id,
       eventType: event.type,
-      payload: event.data.object as Record<string, unknown>,
+      payload: event.data.object as any,
     }
   }
 
@@ -81,7 +81,7 @@ export class StripeAdapter implements IPaymentService {
       charge: chargeId,
       ...(amount !== undefined && { amount }),
     })
-    return { refundId: refund.id, amount: refund.amount, status: refund.status }
+    return { refundId: refund.id!, amount: refund.amount, status: refund.status! }
   }
 
   async createTransfer(params: TransferParams): Promise<Transfer> {

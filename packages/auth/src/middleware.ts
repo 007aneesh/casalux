@@ -3,7 +3,7 @@
  * PRD Section 4.1 — every protected route validates a Clerk JWT via this middleware.
  */
 import type { MiddlewareHandler } from 'hono'
-import { createClerkClient } from '@clerk/backend'
+import { createClerkClient, verifyToken } from '@clerk/backend'
 
 const clerk = createClerkClient({ secretKey: process.env['CLERK_SECRET_KEY']! })
 
@@ -24,7 +24,7 @@ export function requireAuth(): MiddlewareHandler {
     }
 
     try {
-      const payload = await clerk.verifyToken(token)
+      const payload = await verifyToken(token, { secretKey: process.env['CLERK_SECRET_KEY']! })
       const userId = payload.sub
 
       // Attach to context for downstream handlers
