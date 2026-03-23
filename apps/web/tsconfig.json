@@ -2,7 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "preserve",
@@ -10,20 +14,52 @@
     "declaration": false,
     "declarationMap": false,
     "incremental": true,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
-      "@/*":                       ["./src/*"],
-      "@casalux/types":            ["../../packages/types/src/index.ts"],
-      "@casalux/utils":            ["../../packages/utils/src/index.ts"],
-      "@casalux/ui":               ["../../packages/ui/src/index.ts"],
-      "@casalux/services-cache":   ["../../packages/services/cache/src/index.ts"],
-      "@casalux/services-email":   ["../../packages/services/email/src/index.ts"],
-      "@casalux/services-payment": ["../../packages/services/payment/src/index.ts"],
-      "@casalux/services-queue":   ["../../packages/services/queue/src/index.ts"],
-      "@casalux/services-search":  ["../../packages/services/search/src/index.ts"],
-      "@casalux/services-storage": ["../../packages/services/storage/src/index.ts"]
-    }
+      "@/*": [
+        "./src/*"
+      ],
+      "@casalux/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@casalux/utils": [
+        "../../packages/utils/src/index.ts"
+      ],
+      "@casalux/ui": [
+        "../../packages/ui/src/index.ts"
+      ],
+      "@casalux/services-cache": [
+        "../../packages/services/cache/src/index.ts"
+      ],
+      "@casalux/services-email": [
+        "../../packages/services/email/src/index.ts"
+      ],
+      "@casalux/services-payment": [
+        "../../packages/services/payment/src/index.ts"
+      ],
+      "@casalux/services-queue": [
+        "../../packages/services/queue/src/index.ts"
+      ],
+      "@casalux/services-search": [
+        "../../packages/services/search/src/index.ts"
+      ],
+      "@casalux/services-storage": [
+        "../../packages/services/storage/src/index.ts"
+      ]
+    },
+    "allowJs": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { secureHeaders } from 'hono/secure-headers'
+import { openApiSpec } from './docs/openapi.js'
 
 import { listingsRouter } from './routes/listings.js'
 import { bookingsRouter } from './routes/bookings.js'
@@ -32,6 +33,49 @@ app.use('/api/*', rateLimiter)
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }))
+
+// ── Swagger UI ────────────────────────────────────────────────────────────────
+// OpenAPI JSON spec — importable into Postman too
+app.get('/api/v1/openapi.json', (c) => c.json(openApiSpec))
+
+// Swagger UI — served at /docs, loads spec from /api/v1/openapi.json
+app.get('/docs', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CasaLux API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css" />
+  <style>
+    body { margin: 0; }
+    .swagger-ui .topbar { background-color: #1a1a2e; }
+    .swagger-ui .topbar .download-url-wrapper { display: none; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js"></script>
+  <script>
+    SwaggerUIBundle({
+      url: '/api/v1/openapi.json',
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+      plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+      layout: 'StandaloneLayout',
+      persistAuthorization: true,
+      tryItOutEnabled: true,
+      displayRequestDuration: true,
+      defaultModelsExpandDepth: 2,
+      defaultModelExpandDepth: 2,
+      docExpansion: 'list',
+    })
+  </script>
+</body>
+</html>`)
+})
 
 // API v1 routes
 const v1 = new Hono()
