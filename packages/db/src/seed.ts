@@ -122,7 +122,7 @@ async function main() {
     update: {},
     create: {
       clerkId:            CLERK_ADMIN_ID,
-      email:              'admin@casalux.dev',
+      email:              'aneeshx000@gmail.com',
       firstName:          'Aneesh',
       lastName:           'Admin',
       role:               'admin',

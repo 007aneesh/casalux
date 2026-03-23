@@ -25,7 +25,7 @@ Authorization: Bearer <your_clerk_jwt>
 ### Base URL
 \`http://localhost:3001/api/v1\`
     `,
-    contact: { name: 'CasaLux Engineering', email: 'aneesh@wizcommerce.com' },
+    contact: { name: 'CasaLux Engineering', email: 'aneeshx000@gmail.com' },
   },
   servers: [
     { url: 'http://localhost:3001/api/v1', description: 'Local development' },
