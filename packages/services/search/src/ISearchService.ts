@@ -36,6 +36,7 @@ export interface IndexDoc {
 }
 
 export interface ISearchService {
+  ensureIndex(entity: string, mapping: Record<string, unknown>): Promise<void>
   index(entity: string, id: string, doc: Record<string, unknown>): Promise<void>
   delete(entity: string, id: string): Promise<void>
   search<T = Record<string, unknown>>(entity: string, query: SearchQuery): Promise<SearchResult<T>>

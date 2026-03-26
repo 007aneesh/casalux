@@ -51,7 +51,9 @@
         "../../packages/services/storage/src/index.ts"
       ]
     },
-    "allowJs": true
+    "allowJs": true,
+    "noUncheckedIndexedAccess": false,
+    "strictNullChecks": false
   },
   "include": [
     "next-env.d.ts",

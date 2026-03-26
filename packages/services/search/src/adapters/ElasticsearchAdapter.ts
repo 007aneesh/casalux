@@ -31,6 +31,15 @@ export class ElasticsearchAdapter implements ISearchService {
     return `casalux_${entity}`
   }
 
+  async ensureIndex(entity: string, mapping: Record<string, unknown>): Promise<void> {
+    const index = this.indexName(entity)
+    const exists = await this.client.indices.exists({ index })
+    if (!exists) {
+      await this.client.indices.create({ index, mappings: mapping as any })
+      console.log(`[ES] Created index: ${index}`)
+    }
+  }
+
   async index(entity: string, id: string, doc: Record<string, unknown>): Promise<void> {
     await this.client.index({
       index: this.indexName(entity),

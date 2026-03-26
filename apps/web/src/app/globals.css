@@ -1,3 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* CasaLux Design Tokens */
+    --navy: 14 27 50;            /* #0E1B32 */
+    --navy-800: 22 42 78;        /* #162A4E */
+    --gold: 201 169 110;         /* #C9A96E */
+    --gold-600: 181 149 90;      /* #B5955A */
+
+    --background: 250 249 246;   /* #FAF9F6 warm off-white */
+    --foreground: 26 26 26;      /* #1A1A1A */
+    --card: 255 255 255;         /* #FFFFFF */
+    --card-foreground: 26 26 26;
+    --surface: 245 244 241;      /* #F5F4F1 */
+    --border: 229 227 222;       /* #E5E3DE */
+    --muted: 107 114 128;        /* #6B7280 */
+    --muted-foreground: 156 163 175;
+
+    --ring: 201 169 110;         /* gold focus ring */
+
+    --radius: 0.75rem;
+  }
+
+  * {
+    border-color: rgb(var(--border));
+  }
+
+  body {
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted-foreground)); }
+}
+
+@layer components {
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  /* Image overlay gradient for listing cards */
+  .listing-gradient {
+    background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
+  }
+
+  /* Gold shimmer animation for skeleton */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--surface)) 0%,
+      rgb(var(--border)) 50%,
+      rgb(var(--surface)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+}

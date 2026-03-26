@@ -40,7 +40,11 @@ casalux/
 | pnpm | ≥ 9 | `npm install -g pnpm@9` |
 | Docker Desktop | latest | [docker.com](https://www.docker.com/products/docker-desktop) |
 
-## Local Setup
+---
+
+## First-Time Setup
+
+Follow these steps once when you clone the repo.
 
 ### 1. Clone and install dependencies
 
@@ -56,7 +60,8 @@ pnpm install
 docker compose -f infra/docker/docker-compose.yml up -d
 ```
 
-Verify services are healthy:
+Verify all services are healthy before continuing:
+
 ```bash
 docker compose -f infra/docker/docker-compose.yml ps
 ```
@@ -69,14 +74,20 @@ cp .env.example apps/web/.env.local
 ```
 
 Open each file and fill in the required values. At minimum for local dev:
-- `DATABASE_URL` — already set to the Docker Postgres instance
-- `REDIS_URL` — already set to the Docker Redis instance
-- `CLERK_SECRET_KEY` — get from [clerk.com](https://clerk.com) dashboard
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — get from Clerk dashboard
-- `CLOUDINARY_*` — get from [cloudinary.com](https://cloudinary.com) (free tier is fine)
-- `STRIPE_SECRET_KEY` — get from [stripe.com](https://stripe.com) test mode
+
+| Variable | Where to get it |
+|----------|----------------|
+| `DATABASE_URL` | Pre-filled — points to the Docker Postgres instance |
+| `REDIS_URL` | Pre-filled — points to the Docker Redis instance |
+| `CLERK_SECRET_KEY` | [clerk.com](https://clerk.com) dashboard |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk dashboard |
+| `CLOUDINARY_*` | [cloudinary.com](https://cloudinary.com) (free tier is fine) |
+| `STRIPE_SECRET_KEY` | [stripe.com](https://stripe.com) — use test mode keys |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3001` (already set in example) |
 
 ### 4. Generate Prisma client
+
+> **This step is required before running the API for the first time.** Skipping it causes a `SyntaxError: The requested module '@prisma/client' does not provide an export named 'Prisma'` error.
 
 ```bash
 pnpm --filter @casalux/db db:generate
@@ -88,13 +99,21 @@ pnpm --filter @casalux/db db:generate
 pnpm --filter @casalux/db db:migrate
 ```
 
-### 6. Seed the database (amenities catalogue)
+### 6. Seed the database
 
 ```bash
 pnpm --filter @casalux/db db:seed
 ```
 
-### 7. Start all apps in dev mode
+### 7. Sync listings into Elasticsearch
+
+> **Required before search/listings APIs will work.** The API auto-creates the index on startup, but it starts empty. This script pushes all active listings from Postgres into ES.
+
+```bash
+pnpm --filter @casalux/api es:sync
+```
+
+### 8. Start all apps in dev mode
 
 ```bash
 pnpm dev
@@ -108,10 +127,46 @@ This runs all apps in parallel via Turbo:
 | Web | http://localhost:3000 |
 | Admin | http://localhost:3002 |
 
-Or start only the API:
+---
+
+## Regular Dev (Daily Workflow)
+
+Once the first-time setup is done, your daily workflow is:
+
 ```bash
-pnpm --filter @casalux/api dev
+# 1. Make sure Docker services are running
+docker compose -f infra/docker/docker-compose.yml up -d
+
+# 2. Start all apps
+pnpm dev
 ```
+
+If you pulled changes that include new Prisma migrations, run these before starting:
+
+```bash
+pnpm --filter @casalux/db db:migrate
+```
+
+If you pulled changes that include schema changes (new models/fields), also regenerate the client:
+
+```bash
+pnpm --filter @casalux/db db:generate
+```
+
+### Running a single app
+
+```bash
+# API only
+pnpm --filter @casalux/api dev
+
+# Web only
+pnpm --filter @casalux/web dev
+
+# Admin only
+pnpm --filter @casalux/admin dev
+```
+
+---
 
 ## Key Commands
 
@@ -128,13 +183,18 @@ pnpm test
 # Production build
 pnpm build
 
-# Prisma Studio (DB GUI)
+# Prisma Studio (visual DB GUI)
 pnpm --filter @casalux/db db:studio
 
 # Open Kibana (Elasticsearch UI)
 docker compose -f infra/docker/docker-compose.yml --profile kibana up -d
 # → http://localhost:5601
+
+# Clean everything (node_modules + build artifacts)
+pnpm clean
 ```
+
+---
 
 ## TypeScript Module Resolution
 

@@ -22,6 +22,8 @@ import { errorHandler } from './middleware/error-handler.js'
 import { rateLimiter } from './middleware/rate-limiter.js'
 import { startSearchIndexingWorker } from './workers/search-indexing.worker.js'
 import { startPaymentEventsWorker } from './workers/payment-events.worker.js'
+import { ensureESIndices } from './utils/es-init.js'
+import { searchService } from './container.js'
 
 const app = new Hono()
 
@@ -96,6 +98,9 @@ app.route('/api/v1', v1)
 
 // Global error handler
 app.onError(errorHandler)
+
+// Ensure ES indices exist (idempotent — safe to run on every startup)
+ensureESIndices(searchService)
 
 // Start BullMQ workers
 startSearchIndexingWorker()

@@ -30,8 +30,12 @@ export interface ESListingDoc {
   roomType: string
   amenities: string[]
   location: { lat: number; lon: number }
-  city: string
+  // Stored in ES so search results include full address for the listing card
+  address: { street: string; city: string; state: string; country: string; zip: string }
+  city: string      // top-level for keyword filtering / autocomplete
   country: string
+  // Images stored in ES so listing cards render photos without a second DB fetch
+  images: Array<{ publicId: string; url: string; width: number; height: number; isPrimary: boolean; order: number }>
   basePrice: number
   currency: string
   minNights: number
@@ -279,14 +283,10 @@ export class ListingService {
     const cached   = await this.cache.get(cacheKey)
     if (cached) return JSON.parse(cached)
 
-    // Simple geo-based recommendation (full scoring engine is Phase 3)
+    // Simple geo-based recommendation sorted by rating (full scoring engine is Phase 3)
     const esQuery: Record<string, unknown> = {
       bool: {
         must:   [{ term: { status: 'active' } }],
-        should: [
-          { rank_feature: { field: 'avgRating',    boost: 2 } },
-          { rank_feature: { field: 'totalReviews', boost: 1 } },
-        ],
         ...(lat !== undefined && lng !== undefined
           ? { filter: [{ geo_distance: { distance: '50km', location: { lat, lon: lng } } }] }
           : {}),
@@ -295,6 +295,7 @@ export class ListingService {
 
     const result = await this.search.search<ESListingDoc>('listings', {
       filters: esQuery,
+      sort:    [{ field: 'avgRating', order: 'desc' }],
       page:    1,
       limit:   Math.min(limit, 20),
     })
@@ -439,19 +440,26 @@ export class ListingService {
 
   // ─── ES doc builder (PRD Section 6.1) ────────────────────────────────────
   buildESDoc(listing: ListingWithRelations): ESListingDoc {
-    const address = listing.address as { city?: string; country?: string }
+    const addr = listing.address as { street?: string; city?: string; state?: string; country?: string; zip?: string }
     const amenitySlugs = listing.amenities.map((a: any) => a.amenity.slug)
     const isNewListing = (Date.now() - listing.createdAt.getTime()) < 30 * 24 * 60 * 60 * 1000
 
-    // Compute quick filter tags
-    const quickFilterTags: string[] = []
-    if (amenitySlugs.includes('beachfront'))   quickFilterTags.push('beachfront')
-    if (amenitySlugs.includes('pool') && Number(listing.avgRating) >= 4.7) quickFilterTags.push('amazing_pools')
-    if (listing.propertyType === 'cabin')      quickFilterTags.push('cabins')
-    if (Number(listing.basePrice) >= 2000000 && Number(listing.avgRating) >= 4.8) quickFilterTags.push('luxe')
-    if (isNewListing)                          quickFilterTags.push('new')
-    if (listing.instantBook)                   quickFilterTags.push('instant_book')
-    if (amenitySlugs.includes('pets_allowed')) quickFilterTags.push('pet_friendly')
+    // Prefer quickFilterTags stored on the listing (set by seed / host flow).
+    // Fall back to computing from amenities/price for listings without them.
+    let quickFilterTags: string[] = listing.quickFilterTags ?? []
+    if (quickFilterTags.length === 0) {
+      if (amenitySlugs.includes('beachfront'))   quickFilterTags.push('beachfront')
+      if (amenitySlugs.includes('pool') && Number(listing.avgRating) >= 4.7) quickFilterTags.push('amazing_pools')
+      if (listing.propertyType === 'cabin')      quickFilterTags.push('cabins')
+      if (Number(listing.basePrice) >= 2000000 && Number(listing.avgRating) >= 4.8) quickFilterTags.push('luxe')
+      if (isNewListing)                          quickFilterTags.push('new')
+      if (listing.instantBook)                   quickFilterTags.push('instant_book')
+      if (amenitySlugs.includes('pets_allowed')) quickFilterTags.push('pet_friendly')
+    }
+
+    const images = (listing.images ?? []) as Array<{
+      publicId: string; url: string; width: number; height: number; isPrimary: boolean; order: number
+    }>
 
     return {
       id:           listing.id,
@@ -463,8 +471,16 @@ export class ListingService {
       roomType:     listing.roomType,
       amenities:    amenitySlugs,
       location:     { lat: Number(listing.lat), lon: Number(listing.lng) },
-      city:         address.city ?? '',
-      country:      address.country ?? '',
+      address: {
+        street:  addr.street  ?? '',
+        city:    addr.city    ?? '',
+        state:   addr.state   ?? '',
+        country: addr.country ?? '',
+        zip:     addr.zip     ?? '',
+      },
+      city:         addr.city    ?? '',
+      country:      addr.country ?? '',
+      images,
       basePrice:    Number(listing.basePrice),
       currency:     listing.currency,
       minNights:    listing.minNights,
@@ -490,11 +506,8 @@ export class ListingService {
       basePrice:   Number(listing.basePrice),
       cleaningFee: Number(listing.cleaningFee),
       avgRating:   Number(listing.avgRating),
-      amenities:   listing.amenities.map((a: any) => ({
-        slug:     a.amenity.slug,
-        name:     a.amenity.name,
-        category: a.amenity.category,
-      })),
+      // Return slug strings — matches Listing.amenities: string[] and what AmenityGrid expects
+      amenities:   listing.amenities.map((a: any) => a.amenity.slug as string),
       host: {
         id:                 listing.host.user.id,
         firstName:          listing.host.user.firstName,
@@ -575,13 +588,7 @@ export class ListingService {
       })
     }
 
-    // Full-text relevance boosts
-    const should: unknown[] = [
-      { rank_feature: { field: 'avgRating',    boost: 2 } },
-      { rank_feature: { field: 'totalReviews', boost: 1 } },
-    ]
-
-    return { bool: { must, filter, should } }
+    return { bool: { must, filter } }
   }
 
   private buildESSort(sortBy?: string): Array<{ field: string; order: 'asc' | 'desc' }> {
@@ -591,7 +598,7 @@ export class ListingService {
       case 'rating':     return [{ field: 'avgRating',   order: 'desc' }]
       case 'newest':     return [{ field: 'createdAt',   order: 'desc' }]
       case 'distance':   return [{ field: '_geo_distance', order: 'asc' }]
-      default:           return [] // relevance scoring
+      default:           return [{ field: 'avgRating', order: 'desc' }]
     }
   }
 

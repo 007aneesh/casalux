@@ -2,9 +2,9 @@
  * CasaLux Database Seed
  *
  * Creates:
- *  - Amenities (lookup table)
+ *  - Amenities (lookup table, including beachfront)
  *  - 3 test users  (1 guest, 1 host, 1 admin)
- *  - 4 listings    (Goa, Mumbai, Manali, Jaipur)
+ *  - 4 listings    (Goa, Mumbai, Manali, Jaipur) — with images, quickFilterTags, amenities
  *  - 2 bookings    (one completed, one confirmed)
  *  - 1 review      (on the completed booking)
  *  - 1 wishlist    (guest's "Goa Trip" wishlist)
@@ -27,46 +27,47 @@ const CLERK_ADMIN_ID = process.env['SEED_ADMIN_CLERK_ID']  ?? 'user_admin_placeh
 
 // ─── Amenities ────────────────────────────────────────────────────────────────
 const AMENITIES = [
-  { slug: 'wifi',             name: 'WiFi',              category: 'Essentials' },
-  { slug: 'air_conditioning', name: 'Air Conditioning',  category: 'Essentials' },
-  { slug: 'heating',          name: 'Heating',           category: 'Essentials' },
-  { slug: 'kitchen',          name: 'Kitchen',           category: 'Essentials' },
-  { slug: 'washer',           name: 'Washer',            category: 'Essentials' },
-  { slug: 'dryer',            name: 'Dryer',             category: 'Essentials' },
-  { slug: 'tv',               name: 'TV',                category: 'Essentials' },
-  { slug: 'iron',             name: 'Iron',              category: 'Essentials' },
-  { slug: 'hot_tub',          name: 'Hot Tub',           category: 'Bathroom'   },
-  { slug: 'hair_dryer',       name: 'Hair Dryer',        category: 'Bathroom'   },
-  { slug: 'shampoo',          name: 'Shampoo',           category: 'Bathroom'   },
-  { slug: 'pool',             name: 'Pool',              category: 'Outdoor'    },
-  { slug: 'bbq_grill',        name: 'BBQ Grill',         category: 'Outdoor'    },
-  { slug: 'outdoor_dining',   name: 'Outdoor Dining',    category: 'Outdoor'    },
-  { slug: 'beach_access',     name: 'Beach Access',      category: 'Outdoor'    },
-  { slug: 'garden',           name: 'Garden',            category: 'Outdoor'    },
-  { slug: 'free_parking',     name: 'Free Parking',      category: 'Parking'    },
-  { slug: 'ev_charger',       name: 'EV Charger',        category: 'Parking'    },
-  { slug: 'smoke_alarm',      name: 'Smoke Alarm',       category: 'Safety'     },
-  { slug: 'first_aid_kit',    name: 'First Aid Kit',     category: 'Safety'     },
-  { slug: 'fire_extinguisher',name: 'Fire Extinguisher', category: 'Safety'     },
-  { slug: 'carbon_monoxide_alarm', name: 'Carbon Monoxide Alarm', category: 'Safety' },
-  { slug: 'sea_view',         name: 'Sea View',          category: 'Features'   },
-  { slug: 'mountain_view',    name: 'Mountain View',     category: 'Features'   },
-  { slug: 'fireplace',        name: 'Fireplace',         category: 'Features'   },
-  { slug: 'dedicated_workspace', name: 'Dedicated Workspace', category: 'Work'  },
-  { slug: 'fast_wifi',        name: 'Fast WiFi',         category: 'Work'       },
-  { slug: 'standing_desk',    name: 'Standing Desk',     category: 'Work'       },
-  { slug: 'monitor',          name: 'Monitor',           category: 'Work'       },
-  { slug: 'crib',             name: 'Crib',              category: 'Family'     },
-  { slug: 'high_chair',       name: 'High Chair',        category: 'Family'     },
-  { slug: 'stair_gates',      name: 'Stair Gates',       category: 'Family'     },
-  { slug: 'board_games',      name: 'Board Games',       category: 'Family'     },
-  { slug: 'pets_allowed',     name: 'Pets Allowed',      category: 'Pet'        },
-  { slug: 'dog_friendly',     name: 'Dog Friendly',      category: 'Pet'        },
-  { slug: 'cat_litter_box',   name: 'Cat Litter Box',    category: 'Pet'        },
+  { slug: 'wifi',               name: 'WiFi',                category: 'Essentials'    },
+  { slug: 'air_conditioning',   name: 'Air Conditioning',    category: 'Essentials'    },
+  { slug: 'heating',            name: 'Heating',             category: 'Essentials'    },
+  { slug: 'kitchen',            name: 'Kitchen',             category: 'Essentials'    },
+  { slug: 'washer',             name: 'Washer',              category: 'Essentials'    },
+  { slug: 'dryer',              name: 'Dryer',               category: 'Essentials'    },
+  { slug: 'tv',                 name: 'TV',                  category: 'Essentials'    },
+  { slug: 'iron',               name: 'Iron',                category: 'Essentials'    },
+  { slug: 'hot_tub',            name: 'Hot Tub',             category: 'Bathroom'      },
+  { slug: 'hair_dryer',         name: 'Hair Dryer',          category: 'Bathroom'      },
+  { slug: 'shampoo',            name: 'Shampoo',             category: 'Bathroom'      },
+  { slug: 'pool',               name: 'Pool',                category: 'Outdoor'       },
+  { slug: 'bbq_grill',          name: 'BBQ Grill',           category: 'Outdoor'       },
+  { slug: 'outdoor_dining',     name: 'Outdoor Dining',      category: 'Outdoor'       },
+  { slug: 'beach_access',       name: 'Beach Access',        category: 'Outdoor'       },
+  { slug: 'beachfront',         name: 'Beachfront',          category: 'Outdoor'       },
+  { slug: 'garden',             name: 'Garden',              category: 'Outdoor'       },
+  { slug: 'free_parking',       name: 'Free Parking',        category: 'Parking'       },
+  { slug: 'ev_charger',         name: 'EV Charger',          category: 'Parking'       },
+  { slug: 'smoke_alarm',        name: 'Smoke Alarm',         category: 'Safety'        },
+  { slug: 'first_aid_kit',      name: 'First Aid Kit',       category: 'Safety'        },
+  { slug: 'fire_extinguisher',  name: 'Fire Extinguisher',   category: 'Safety'        },
+  { slug: 'carbon_monoxide_alarm', name: 'Carbon Monoxide Alarm', category: 'Safety'  },
+  { slug: 'sea_view',           name: 'Sea View',            category: 'Features'      },
+  { slug: 'mountain_view',      name: 'Mountain View',       category: 'Features'      },
+  { slug: 'fireplace',          name: 'Fireplace',           category: 'Features'      },
+  { slug: 'dedicated_workspace',name: 'Dedicated Workspace', category: 'Work'          },
+  { slug: 'fast_wifi',          name: 'Fast WiFi',           category: 'Work'          },
+  { slug: 'standing_desk',      name: 'Standing Desk',       category: 'Work'          },
+  { slug: 'monitor',            name: 'Monitor',             category: 'Work'          },
+  { slug: 'crib',               name: 'Crib',                category: 'Family'        },
+  { slug: 'high_chair',         name: 'High Chair',          category: 'Family'        },
+  { slug: 'stair_gates',        name: 'Stair Gates',         category: 'Family'        },
+  { slug: 'board_games',        name: 'Board Games',         category: 'Family'        },
+  { slug: 'pets_allowed',       name: 'Pets Allowed',        category: 'Pet'           },
+  { slug: 'dog_friendly',       name: 'Dog Friendly',        category: 'Pet'           },
+  { slug: 'cat_litter_box',     name: 'Cat Litter Box',      category: 'Pet'           },
   { slug: 'wheelchair_accessible', name: 'Wheelchair Accessible', category: 'Accessibility' },
-  { slug: 'elevator',         name: 'Elevator',          category: 'Accessibility' },
-  { slug: 'step_free_path',   name: 'Step-free Path',    category: 'Accessibility' },
-  { slug: 'wide_doorways',    name: 'Wide Doorways',     category: 'Accessibility' },
+  { slug: 'elevator',           name: 'Elevator',            category: 'Accessibility' },
+  { slug: 'step_free_path',     name: 'Step-free Path',      category: 'Accessibility' },
+  { slug: 'wide_doorways',      name: 'Wide Doorways',       category: 'Accessibility' },
 ]
 
 async function main() {
@@ -84,8 +85,6 @@ async function main() {
   console.log(`   ✅ ${AMENITIES.length} amenities ready\n`)
 
   // ── 2. Users ─────────────────────────────────────────────────────────────────
-  // User model fields: id, clerkId, email, firstName, lastName, profileImageUrl,
-  //   role, verificationStatus, isBanned, bannedReason, deletedAt, createdAt, updatedAt
   console.log('👤 Seeding test users...')
   if (CLERK_GUEST_ID === 'user_guest_placeholder') {
     console.log('   ⚠️  Using placeholder Clerk IDs — set SEED_GUEST_CLERK_ID / SEED_HOST_CLERK_ID / SEED_ADMIN_CLERK_ID in .env\n')
@@ -99,6 +98,7 @@ async function main() {
       email:              'guest@casalux.dev',
       firstName:          'Priya',
       lastName:           'Sharma',
+      profileImageUrl:    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
       role:               'guest',
       verificationStatus: 'verified',
     },
@@ -112,6 +112,7 @@ async function main() {
       email:              'host@casalux.dev',
       firstName:          'Arjun',
       lastName:           'Mehta',
+      profileImageUrl:    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
       role:               'host',
       verificationStatus: 'verified',
     },
@@ -135,24 +136,23 @@ async function main() {
   console.log(`   ✅ Admin: ${admin.firstName} ${admin.lastName} (${admin.clerkId})\n`)
 
   // ── 3. Host Profile ──────────────────────────────────────────────────────────
-  // HostProfile fields: id, userId, bio, responseRate, avgResponseTimeHours,
-  //   isSuperhost, superhostGrantedAt, totalListings, hostCancellationCount, responseWindowHours
   const hostProfile = await db.hostProfile.upsert({
     where:  { userId: host.id },
     update: {},
     create: {
-      userId:              host.id,
-      bio:                 'Superhost with properties across Goa and Mumbai. Your comfort is my top priority.',
-      responseRate:        98,
+      userId:               host.id,
+      bio:                  'Superhost with properties across Goa and Mumbai. Your comfort is my top priority.',
+      responseRate:         98,
       avgResponseTimeHours: 1,
-      isSuperhost:         true,
-      totalListings:       4,
+      isSuperhost:          true,
+      totalListings:        4,
     },
   })
 
   // ── 4. Listings ──────────────────────────────────────────────────────────────
-  // Listing: address is Json, images is Json[], no serviceFeePercent,
-  //   no separate street/city/state/country/postalCode fields.
+  // Images must match the ListingImage type:
+  //   { publicId, url, width, height, isPrimary, order }
+  // quickFilterTags drive the home-feed filters — set explicitly here.
   console.log('🏠 Seeding listings...')
 
   const listing1 = await db.listing.upsert({
@@ -162,7 +162,7 @@ async function main() {
       id:           'seed-listing-goa-villa',
       hostId:       hostProfile.id,
       title:        'Luxury Beach Villa with Private Pool — North Goa',
-      description:  'Wake up to the sound of waves in this stunning 3-bedroom beach villa. Private pool, direct beach access, fully equipped kitchen, and daily housekeeping. Just 2 minutes walk to Anjuna Beach.',
+      description:  'Wake up to the sound of waves in this stunning 3-bedroom beach villa. Private pool, direct beachfront access, fully equipped kitchen, and daily housekeeping. Just 2 minutes walk to Anjuna Beach.',
       propertyType: 'villa',
       roomType:     'entire_place',
       status:       'active',
@@ -180,8 +180,8 @@ async function main() {
         country: 'India',
         zip:     '403509',
       },
-      lat:               15.5706,
-      lng:               73.7380,
+      lat:                15.5706,
+      lng:                73.7380,
       cancellationPolicy: 'moderate',
       instantBook:        true,
       checkInTime:        '14:00',
@@ -190,9 +190,14 @@ async function main() {
       maxNights:          30,
       avgRating:          4.9,
       totalReviews:       47,
+      // Tags drive quick filters on the home feed
+      quickFilterTags: ['beachfront', 'amazing_pools', 'trending'],
       images: [
-        { url: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1200', isPrimary: true,  sortOrder: 0 },
-        { url: 'https://images.unsplash.com/photo-1602343168117-bb8ffe3e2e9f?w=1200', isPrimary: false, sortOrder: 1 },
+        { publicId: 'seed-goa-1', url: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1200', isPrimary: true,  order: 0, width: 1200, height: 800 },
+        { publicId: 'seed-goa-2', url: 'https://images.unsplash.com/photo-1613977257592-4871e5fcd7c4?w=1200', isPrimary: false, order: 1, width: 1200, height: 800 },
+        { publicId: 'seed-goa-3', url: 'https://images.unsplash.com/photo-1602343168117-bb8ffe3e2e9f?w=1200', isPrimary: false, order: 2, width: 1200, height: 800 },
+        { publicId: 'seed-goa-4', url: 'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=1200', isPrimary: false, order: 3, width: 1200, height: 800 },
+        { publicId: 'seed-goa-5', url: 'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=1200', isPrimary: false, order: 4, width: 1200, height: 800 },
       ],
     },
   })
@@ -204,7 +209,7 @@ async function main() {
       id:           'seed-listing-mumbai-apt',
       hostId:       hostProfile.id,
       title:        'Modern Sea-View Studio — Bandra West, Mumbai',
-      description:  'Stylish studio on the 18th floor with panoramic Arabian Sea views. Heart of Bandra West — walk to Carter Road, restaurants, and nightlife.',
+      description:  'Stylish studio on the 18th floor with panoramic Arabian Sea views. Heart of Bandra West — walk to Carter Road, restaurants, and nightlife. Fast WiFi, dedicated workspace, fully equipped.',
       propertyType: 'apartment',
       roomType:     'entire_place',
       status:       'active',
@@ -222,8 +227,8 @@ async function main() {
         country: 'India',
         zip:     '400050',
       },
-      lat:               19.0596,
-      lng:               72.8295,
+      lat:                19.0596,
+      lng:                72.8295,
       cancellationPolicy: 'flexible',
       instantBook:        true,
       checkInTime:        '13:00',
@@ -232,8 +237,11 @@ async function main() {
       maxNights:          90,
       avgRating:          4.7,
       totalReviews:       23,
+      quickFilterTags: ['trending', 'instant_book'],
       images: [
-        { url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200', isPrimary: true, sortOrder: 0 },
+        { publicId: 'seed-mumbai-1', url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200', isPrimary: true,  order: 0, width: 1200, height: 800 },
+        { publicId: 'seed-mumbai-2', url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200', isPrimary: false, order: 1, width: 1200, height: 800 },
+        { publicId: 'seed-mumbai-3', url: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200', isPrimary: false, order: 2, width: 1200, height: 800 },
       ],
     },
   })
@@ -245,7 +253,7 @@ async function main() {
       id:           'seed-listing-manali-cabin',
       hostId:       hostProfile.id,
       title:        'Himalayan Pine Log Cabin — Old Manali',
-      description:  'Cosy pine cabin in Himalayan forests. Fireplace, private balcony, snow-capped mountain views. 10-minute walk to Old Manali market.',
+      description:  'Cosy pine cabin in Himalayan forests. Fireplace, private balcony with snow-capped mountain views. 10-minute walk to Old Manali market. Pet-friendly. Perfect for couples and small families.',
       propertyType: 'cabin',
       roomType:     'entire_place',
       status:       'active',
@@ -263,8 +271,8 @@ async function main() {
         country: 'India',
         zip:     '175131',
       },
-      lat:               32.2639,
-      lng:               77.1892,
+      lat:                32.2639,
+      lng:                77.1892,
       cancellationPolicy: 'strict',
       instantBook:        false,
       checkInTime:        '15:00',
@@ -273,8 +281,12 @@ async function main() {
       maxNights:          14,
       avgRating:          4.8,
       totalReviews:       31,
+      quickFilterTags: ['cabins', 'pet_friendly', 'trending'],
       images: [
-        { url: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1200', isPrimary: true, sortOrder: 0 },
+        { publicId: 'seed-manali-1', url: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1200', isPrimary: true,  order: 0, width: 1200, height: 800 },
+        { publicId: 'seed-manali-2', url: 'https://images.unsplash.com/photo-1490526047243-855c50ab9f3e?w=1200', isPrimary: false, order: 1, width: 1200, height: 800 },
+        { publicId: 'seed-manali-3', url: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=1200', isPrimary: false, order: 2, width: 1200, height: 800 },
+        { publicId: 'seed-manali-4', url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200', isPrimary: false, order: 3, width: 1200, height: 800 },
       ],
     },
   })
@@ -286,7 +298,7 @@ async function main() {
       id:           'seed-listing-jaipur-haveli',
       hostId:       hostProfile.id,
       title:        'Heritage Haveli with Rooftop Pool — Pink City, Jaipur',
-      description:  'Live like royalty in this 200-year-old heritage haveli. Rooftop infinity pool, traditional Rajasthani architecture, steps from Hawa Mahal.',
+      description:  'Live like royalty in this 200-year-old heritage haveli. Rooftop infinity pool, traditional Rajasthani architecture with modern comforts, steps from Hawa Mahal. Concierge, chef on request.',
       propertyType: 'house',
       roomType:     'entire_place',
       status:       'active',
@@ -304,8 +316,8 @@ async function main() {
         country: 'India',
         zip:     '302001',
       },
-      lat:               26.9239,
-      lng:               75.8267,
+      lat:                26.9239,
+      lng:                75.8267,
       cancellationPolicy: 'moderate',
       instantBook:        true,
       checkInTime:        '15:00',
@@ -314,8 +326,12 @@ async function main() {
       maxNights:          21,
       avgRating:          5.0,
       totalReviews:       12,
+      quickFilterTags: ['amazing_pools', 'luxe', 'trending'],
       images: [
-        { url: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=1200', isPrimary: true, sortOrder: 0 },
+        { publicId: 'seed-jaipur-1', url: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=1200', isPrimary: true,  order: 0, width: 1200, height: 800 },
+        { publicId: 'seed-jaipur-2', url: 'https://images.unsplash.com/photo-1590086782957-93c06ef21604?w=1200', isPrimary: false, order: 1, width: 1200, height: 800 },
+        { publicId: 'seed-jaipur-3', url: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=1200', isPrimary: false, order: 2, width: 1200, height: 800 },
+        { publicId: 'seed-jaipur-4', url: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=1200', isPrimary: false, order: 3, width: 1200, height: 800 },
       ],
     },
   })
@@ -338,41 +354,54 @@ async function main() {
     }
   }
 
-  await linkAmenities(listing1.id, ['wifi', 'pool', 'air_conditioning', 'kitchen', 'beach_access', 'bbq_grill', 'free_parking', 'smoke_alarm', 'first_aid_kit', 'sea_view'])
-  await linkAmenities(listing2.id, ['wifi', 'fast_wifi', 'air_conditioning', 'kitchen', 'tv', 'dedicated_workspace', 'smoke_alarm', 'sea_view', 'elevator'])
-  await linkAmenities(listing3.id, ['wifi', 'heating', 'kitchen', 'fireplace', 'mountain_view', 'free_parking', 'pets_allowed', 'smoke_alarm', 'bbq_grill'])
-  await linkAmenities(listing4.id, ['wifi', 'pool', 'air_conditioning', 'kitchen', 'tv', 'free_parking', 'smoke_alarm', 'first_aid_kit', 'bbq_grill'])
+  // Goa: beachfront + pool → enables 'beachfront' and 'amazing_pools' quick filters
+  await linkAmenities(listing1.id, [
+    'wifi', 'pool', 'air_conditioning', 'kitchen', 'beachfront', 'beach_access',
+    'bbq_grill', 'outdoor_dining', 'free_parking', 'smoke_alarm', 'first_aid_kit', 'sea_view',
+  ])
+  // Mumbai: sea view, workspace
+  await linkAmenities(listing2.id, [
+    'wifi', 'fast_wifi', 'air_conditioning', 'kitchen', 'tv', 'dedicated_workspace',
+    'smoke_alarm', 'sea_view', 'elevator', 'washer', 'iron',
+  ])
+  // Manali: cabin + pets → enables 'cabins' and 'pet_friendly' quick filters
+  await linkAmenities(listing3.id, [
+    'wifi', 'heating', 'kitchen', 'fireplace', 'mountain_view', 'free_parking',
+    'pets_allowed', 'dog_friendly', 'smoke_alarm', 'bbq_grill', 'board_games',
+  ])
+  // Jaipur: pool + high price → enables 'amazing_pools' and 'luxe' quick filters
+  await linkAmenities(listing4.id, [
+    'wifi', 'pool', 'air_conditioning', 'kitchen', 'tv', 'free_parking',
+    'smoke_alarm', 'first_aid_kit', 'bbq_grill', 'outdoor_dining', 'hot_tub',
+  ])
   console.log('   ✅ Amenities linked to all listings\n')
 
   // ── 6. Bookings ───────────────────────────────────────────────────────────────
-  // Booking: guestId = Clerk userId (clerkId), hostId = Clerk userId
-  // Required fields: baseSubtotal, platformServiceFee, totalAmount, hostPayout,
-  //   paymentProvider, paymentOrderId, idempotencyKey
   console.log('📅 Seeding bookings...')
 
   const completedBooking = await db.booking.upsert({
     where:  { id: 'seed-booking-completed' },
     update: {},
     create: {
-      id:                'seed-booking-completed',
-      listingId:         listing1.id,
-      guestId:           guest.clerkId,
-      hostId:            host.clerkId,
-      checkIn:           new Date('2025-10-01'),
-      checkOut:          new Date('2025-10-06'),
-      nights:            5,
-      guests:            4,
-      baseSubtotal:      4000000,
-      cleaningFee:       150000,
+      id:                 'seed-booking-completed',
+      listingId:          listing1.id,
+      guestId:            guest.clerkId,
+      hostId:             host.clerkId,
+      checkIn:            new Date('2025-10-01'),
+      checkOut:           new Date('2025-10-06'),
+      nights:             5,
+      guests:             4,
+      baseSubtotal:       4000000,
+      cleaningFee:        150000,
       platformServiceFee: 492000,
-      totalAmount:       4642000,
-      hostPayout:        3808000,
-      currency:          'INR',
-      status:            'completed',
-      paymentProvider:   'stripe',
-      paymentOrderId:    'pi_seed_completed_001',
-      paymentId:         'pi_seed_completed_001',
-      idempotencyKey:    'seed-booking-completed-idem',
+      totalAmount:        4642000,
+      hostPayout:         3808000,
+      currency:           'INR',
+      status:             'completed',
+      paymentProvider:    'stripe',
+      paymentOrderId:     'pi_seed_completed_001',
+      paymentId:          'pi_seed_completed_001',
+      idempotencyKey:     'seed-booking-completed-idem',
     },
   })
 
@@ -380,25 +409,25 @@ async function main() {
     where:  { id: 'seed-booking-confirmed' },
     update: {},
     create: {
-      id:                'seed-booking-confirmed',
-      listingId:         listing2.id,
-      guestId:           guest.clerkId,
-      hostId:            host.clerkId,
-      checkIn:           new Date('2025-12-20'),
-      checkOut:          new Date('2025-12-25'),
-      nights:            5,
-      guests:            2,
-      baseSubtotal:      1750000,
-      cleaningFee:       80000,
+      id:                 'seed-booking-confirmed',
+      listingId:          listing2.id,
+      guestId:            guest.clerkId,
+      hostId:             host.clerkId,
+      checkIn:            new Date('2025-12-20'),
+      checkOut:           new Date('2025-12-25'),
+      nights:             5,
+      guests:             2,
+      baseSubtotal:       1750000,
+      cleaningFee:        80000,
       platformServiceFee: 218400,
-      totalAmount:       2048400,
-      hostPayout:        1681600,
-      currency:          'INR',
-      status:            'confirmed',
-      paymentProvider:   'stripe',
-      paymentOrderId:    'pi_seed_confirmed_001',
-      paymentId:         'pi_seed_confirmed_001',
-      idempotencyKey:    'seed-booking-confirmed-idem',
+      totalAmount:        2048400,
+      hostPayout:         1681600,
+      currency:           'INR',
+      status:             'confirmed',
+      paymentProvider:    'stripe',
+      paymentOrderId:     'pi_seed_confirmed_001',
+      paymentId:          'pi_seed_confirmed_001',
+      idempotencyKey:     'seed-booking-confirmed-idem',
     },
   })
 
@@ -406,7 +435,6 @@ async function main() {
   console.log(`   ✅ Confirmed booking: ${confirmedBooking.id} (Mumbai studio, Dec 2025)\n`)
 
   // ── 7. Review ────────────────────────────────────────────────────────────────
-  // Review: guestId references User.clerkId
   console.log('⭐ Seeding review...')
 
   const review = await db.review.upsert({
@@ -449,7 +477,6 @@ async function main() {
   console.log(`   ✅ Wishlist "${wishlist.name}" with 2 listings\n`)
 
   // ── 9. Message thread ────────────────────────────────────────────────────────
-  // MessageThread: guestId and hostId reference User.clerkId
   console.log('💬 Seeding message thread...')
 
   const thread = await db.messageThread.upsert({
@@ -467,9 +494,9 @@ async function main() {
   })
 
   const messages = [
-    { id: 'seed-msg-1', senderId: guest.clerkId, body: 'Hi Arjun! Excited about our December stay. Any parking tips and best way from airport?', createdAt: new Date('2025-11-14T09:00:00Z') },
-    { id: 'seed-msg-2', senderId: host.clerkId,  body: 'Hi Priya! 2 reserved spots in basement — mention my name to security. For airport, Ola/Uber takes ~45 min. Looking forward to hosting you!', createdAt: new Date('2025-11-14T09:45:00Z') },
-    { id: 'seed-msg-3', senderId: guest.clerkId, body: 'Perfect, thank you! Is early check-in around 11am possible? Our flight lands at 8am.', createdAt: new Date('2025-11-15T10:30:00Z') },
+    { id: 'seed-msg-1', senderId: guest.clerkId, body: 'Hi Arjun! Excited about our December stay. Any parking tips and best way from airport?',                                                                                 createdAt: new Date('2025-11-14T09:00:00Z') },
+    { id: 'seed-msg-2', senderId: host.clerkId,  body: 'Hi Priya! 2 reserved spots in the basement — mention my name to security. For the airport, Ola/Uber takes ~45 min. Looking forward to hosting you!',                    createdAt: new Date('2025-11-14T09:45:00Z') },
+    { id: 'seed-msg-3', senderId: guest.clerkId, body: 'Perfect, thank you! Is early check-in around 11am possible? Our flight lands at 8am.',                                                                                   createdAt: new Date('2025-11-15T10:30:00Z') },
   ]
 
   for (const msg of messages) {
@@ -485,6 +512,8 @@ async function main() {
   // ── Summary ──────────────────────────────────────────────────────────────────
   console.log('═══════════════════════════════════════════════════')
   console.log('🏁 Seed complete!\n')
+  console.log('  ⚠️  Next step: run  pnpm --filter @casalux/api es:sync')
+  console.log('     to index listings into Elasticsearch\n')
   console.log('  Public endpoints (no auth needed):')
   console.log('  GET  /api/v1/listings')
   console.log('  GET  /api/v1/listings/seed-listing-goa-villa')
