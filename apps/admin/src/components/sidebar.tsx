@@ -11,11 +11,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard',          href: '/dashboard',              icon: '▣' },
-  { label: 'Listings',           href: '/dashboard/listings',     icon: '🏠' },
-  { label: 'Bookings',           href: '/dashboard/bookings',     icon: '📋' },
-  { label: 'Users',              href: '/dashboard/users',        icon: '👤' },
-  { label: 'Host Applications',  href: '/dashboard/host-applications', icon: '📝' },
+  { label: 'Dashboard',          href: '/dashboard',          icon: '▣' },
+  { label: 'Listings',           href: '/listings',           icon: '🏠' },
+  { label: 'Bookings',           href: '/bookings',           icon: '📋' },
+  { label: 'Users',              href: '/users',              icon: '👤' },
+  { label: 'Host Applications',  href: '/host-applications',  icon: '📝' },
 ]
 
 export default function Sidebar(): JSX.Element {
@@ -29,9 +29,7 @@ export default function Sidebar(): JSX.Element {
 
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
-          const isActive = item.href === '/dashboard'
-            ? pathname === item.href
-            : pathname.startsWith(item.href)
+          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
 
           return (
             <Link
