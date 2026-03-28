@@ -14,7 +14,7 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
     }
 
     // Only allow admin and super_admin roles
-    const role = (sessionClaims?.metadata as { role?: string } | undefined)?.role
+    const role = (sessionClaims?.publicMetadata as { role?: string } | undefined)?.role
     if (role !== 'admin' && role !== 'super_admin') {
       return new NextResponse('Forbidden: Admin access required', { status: 403 })
     }
