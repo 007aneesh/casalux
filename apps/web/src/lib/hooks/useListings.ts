@@ -1,4 +1,5 @@
 'use client'
+import { useState, useCallback } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { apiRequest } from '../api-client'
@@ -85,6 +86,49 @@ export function usePricingPreview(
     { dedupingInterval: 2000 }
   )
   return { pricing: data?.data, isLoading, error }
+}
+
+// ---------- Recommended Listings ----------
+
+export function useRecommended(
+  params: { lat?: number; lng?: number; limit?: number; type?: string },
+  enabled = true
+) {
+  const { data, isLoading, error } = useSWR(
+    enabled ? `/listings/recommended${buildQueryString(params)}` : null,
+    (path: string) => apiRequest<Listing[]>(path),
+    { revalidateOnFocus: false }
+  )
+  return { listings: data?.data ?? [], isLoading, error }
+}
+
+// ---------- Geolocation ----------
+
+type GeoStatus = 'idle' | 'loading' | 'granted' | 'denied' | 'unavailable'
+
+export function useGeolocation() {
+  const [status, setStatus] = useState<GeoStatus>('idle')
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+
+  const request = useCallback(() => {
+    if (!navigator.geolocation) {
+      setStatus('unavailable')
+      return
+    }
+    setStatus('loading')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setStatus('granted')
+      },
+      () => {
+        setStatus('denied')
+      },
+      { timeout: 8000, maximumAge: 300_000 }
+    )
+  }, [])
+
+  return { status, coords, request }
 }
 
 // ---------- Reviews ----------

@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { ArrowLeft, Shield, Zap } from 'lucide-react'
@@ -33,6 +33,12 @@ export default function BookingCheckoutPage({ params }: PageProps) {
     params.id,
     { checkIn, checkOut, guests }
   )
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace(`/listings/${params.id}`)
+    }
+  }, [isLoaded, isSignedIn, router, params.id])
 
   const [agreedToRules, setAgreedToRules] = useState(false)
   const [promoCode, setPromoCode] = useState('')

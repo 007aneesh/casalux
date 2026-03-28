@@ -23,7 +23,7 @@ export class WishlistController {
     try {
       const clerkId   = c.get('userId') as string
       const wishlists = await this.service.listWishlists(clerkId)
-      return c.json({ wishlists })
+      return c.json({ success: true, data: wishlists })
     } catch (err) {
       return handleWishlistError(err, c)
     }
@@ -50,7 +50,14 @@ export class WishlistController {
       const clerkId   = c.get('userId') as string
       const listingId = c.req.param('listingId') as string
       const result    = await this.service.checkListing(clerkId, listingId)
-      return c.json(result)
+      return c.json({
+        success: true,
+        data: {
+          saved:       result.isSaved,
+          wishlistId:  result.wishlistIds[0] ?? null,
+          wishlistIds: result.wishlistIds,
+        },
+      })
     } catch (err) {
       return handleWishlistError(err, c)
     }

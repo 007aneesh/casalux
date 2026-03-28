@@ -9,6 +9,7 @@ import {
   SignedIn,
   SignedOut,
   UserButton,
+  useUser,
 } from '@clerk/nextjs'
 import {
   Globe,
@@ -38,6 +39,9 @@ export function Navbar() {
   const pathname = usePathname()
   const isHome = pathname === '/'
   const [menuOpen, setMenuOpen] = useState(false)
+  const { user } = useUser()
+  const role = user?.publicMetadata?.role as string | undefined
+  const isHost = role === 'host' || role === 'admin'
 
   return (
     <header
@@ -59,8 +63,8 @@ export function Navbar() {
 
           {/* Right controls */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Become a Host */}
-            <SignedIn>
+            {/* Host Dashboard — only for host/admin */}
+            {isHost && (
               <Link
                 href="/host/dashboard"
                 className="hidden lg:flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-surface transition-colors"
@@ -68,7 +72,18 @@ export function Navbar() {
                 <Building2 className="h-4 w-4" />
                 Host
               </Link>
-            </SignedIn>
+            )}
+
+            {/* Become a Host — for guests (signed in or out) */}
+            {!isHost && (
+              <Link
+                href="/become-a-host"
+                className="hidden lg:flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-surface transition-colors"
+              >
+                <Building2 className="h-4 w-4" />
+                Become a host
+              </Link>
+            )}
 
             {/* Language */}
             <button className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl text-muted hover:bg-surface hover:text-foreground transition-colors">
@@ -143,9 +158,15 @@ export function Navbar() {
             <Link href="/messages" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
               <MessageSquare className="h-4 w-4 text-muted" /> Messages
             </Link>
-            <Link href="/host/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
-              <Building2 className="h-4 w-4 text-muted" /> Host Dashboard
-            </Link>
+            {isHost ? (
+              <Link href="/host/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
+                <Building2 className="h-4 w-4 text-muted" /> Host Dashboard
+              </Link>
+            ) : (
+              <Link href="/become-a-host" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
+                <Building2 className="h-4 w-4 text-muted" /> Become a host
+              </Link>
+            )}
           </div>
         )}
       </div>

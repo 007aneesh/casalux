@@ -277,16 +277,32 @@ export class ListingService {
     userId: string,
     lat?: number,
     lng?: number,
-    limit = 20
+    limit = 20,
+    type?: string
   ) {
-    const cacheKey = CacheKeys.recommend(userId)
-    const cached   = await this.cache.get(cacheKey)
+    // Cache key varies by type so each rail gets its own cache slot
+    const cacheKey = type
+      ? `${CacheKeys.recommend(userId)}:type:${type}`
+      : CacheKeys.recommend(userId)
+    const cached = await this.cache.get(cacheKey)
     if (cached) return JSON.parse(cached)
 
-    // Simple geo-based recommendation sorted by rating (full scoring engine is Phase 3)
+    const PROPERTY_TYPES = new Set(['apartment', 'house', 'villa', 'cabin', 'unique', 'hotel'])
+
+    const mustClauses: Record<string, unknown>[] = [{ term: { status: 'active' } }]
+
+    if (type) {
+      if (PROPERTY_TYPES.has(type)) {
+        mustClauses.push({ term: { propertyType: type } })
+      } else {
+        // treat as a quickFilterTag (beachfront, trending, luxe, etc.)
+        mustClauses.push({ term: { quickFilterTags: type } })
+      }
+    }
+
     const esQuery: Record<string, unknown> = {
       bool: {
-        must:   [{ term: { status: 'active' } }],
+        must: mustClauses,
         ...(lat !== undefined && lng !== undefined
           ? { filter: [{ geo_distance: { distance: '50km', location: { lat, lon: lng } } }] }
           : {}),

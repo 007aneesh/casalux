@@ -49,7 +49,7 @@ export function AvailabilityCalendar({
           selected={range}
           onSelect={setRange}
           disabled={isDisabled}
-          numberOfMonths={2}
+          numberOfMonths={inline ? 1 : 2}
           fromDate={today}
           modifiersClassNames={{
             selected: 'rdp-selected',

@@ -220,10 +220,10 @@ function FilterDrawer({ onClose }: { onClose: () => void }) {
                 <input
                   type="range"
                   min={0}
-                  max={10000000}
+                  max={maxPrice}
                   step={100000}
                   value={minPrice}
-                  onChange={(e) => setMinPrice(parseInt(e.target.value))}
+                  onChange={(e) => setMinPrice(Math.min(parseInt(e.target.value), maxPrice))}
                   className="w-full accent-navy mt-1"
                 />
               </div>
@@ -231,11 +231,11 @@ function FilterDrawer({ onClose }: { onClose: () => void }) {
                 <label className="text-xs text-muted">Max price</label>
                 <input
                   type="range"
-                  min={500000}
+                  min={minPrice}
                   max={50000000}
                   step={500000}
                   value={maxPrice}
-                  onChange={(e) => setMaxPrice(parseInt(e.target.value))}
+                  onChange={(e) => setMaxPrice(Math.max(parseInt(e.target.value), minPrice))}
                   className="w-full accent-navy mt-1"
                 />
               </div>

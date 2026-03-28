@@ -40,8 +40,11 @@ const onboardingController = new OnboardingController(onboardingService)
 
 export const hostRouter = new Hono()
 
-// All host routes require auth + host role
-hostRouter.use('*', requireAuth(), requireRole('host'))
+// ─── Protected routes (require auth + host role) ─────────────────────────────
+hostRouter.use('/listings*',        requireAuth(), requireRole('host'))
+hostRouter.use('/bookings*',        requireAuth(), requireRole('host'))
+hostRouter.use('/booking-requests*',requireAuth(), requireRole('host'))
+hostRouter.use('/stats*',           requireAuth(), requireRole('host'))
 
 // ─── Listing management ───────────────────────────────────────────────────────
 hostRouter.post('/listings',                          (c) => controller.createListing(c))
@@ -65,8 +68,9 @@ hostRouter.post('/booking-requests/:id/approve',     (c) => bookingController.ap
 hostRouter.post('/booking-requests/:id/decline',     (c) => bookingController.declineRequest(c))
 
 // ─── Host onboarding (8-step wizard) ─────────────────────────────────────────
-// Note: onboarding routes only need requireAuth() — not requireRole('host')
-//       because the user becomes a host AFTER completing onboarding.
+// Only requireAuth() — the user becomes a host AFTER completing onboarding.
+// Inline middleware per route because path-wildcard use() doesn't compose
+// reliably in Hono v4 sub-routers.
 hostRouter.post(  '/onboarding/start',                        requireAuth(), (c) => onboardingController.start(c))
 hostRouter.get(   '/onboarding/:sessionId',                   requireAuth(), (c) => onboardingController.getSession(c))
 hostRouter.patch( '/onboarding/:sessionId/space',             requireAuth(), (c) => onboardingController.saveSpace(c))

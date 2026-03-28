@@ -90,7 +90,7 @@ export class OnboardingController {
   /** POST /host/onboarding/start */
   async start(c: Context): Promise<Response> {
     try {
-      const clerkId = c.get('userId') as string
+      const clerkId = (c.get('authUser') as { userId: string }).userId
       const session = await this.service.start(clerkId)
       return c.json({ session }, 201)
     } catch (err) {
@@ -101,7 +101,7 @@ export class OnboardingController {
   /** GET /host/onboarding/:sessionId */
   async getSession(c: Context): Promise<Response> {
     try {
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const session   = await this.service.getSession(sessionId, clerkId)
       return c.json({ session })
@@ -117,7 +117,7 @@ export class OnboardingController {
       const parsed = spaceSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const session   = await this.service.saveSpace(sessionId, clerkId, parsed.data)
       return c.json({ session })
@@ -133,7 +133,7 @@ export class OnboardingController {
       const parsed = amenitiesSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const session   = await this.service.saveAmenities(sessionId, clerkId, parsed.data.amenities)
       return c.json({ session })
@@ -149,7 +149,7 @@ export class OnboardingController {
       const parsed = photosSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const session   = await this.service.savePhotos(sessionId, clerkId, parsed.data.photos)
       return c.json({ session })
@@ -165,7 +165,7 @@ export class OnboardingController {
       const parsed = detailsSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const session   = await this.service.saveDetails(sessionId, clerkId, parsed.data)
       return c.json({ session })
@@ -181,7 +181,7 @@ export class OnboardingController {
       const parsed = pricingSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const session   = await this.service.savePricing(sessionId, clerkId, parsed.data)
       return c.json({ session })
@@ -197,7 +197,7 @@ export class OnboardingController {
       const parsed = availabilitySchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const session   = await this.service.saveAvailability(sessionId, clerkId, parsed.data)
       return c.json({ session })
@@ -209,7 +209,7 @@ export class OnboardingController {
   /** POST /host/onboarding/:sessionId/submit */
   async submit(c: Context): Promise<Response> {
     try {
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const result    = await this.service.submit(sessionId, clerkId)
       return c.json(result)
@@ -233,7 +233,7 @@ export class OnboardingController {
   /** POST /admin/host-applications/:sessionId/approve */
   async approve(c: Context): Promise<Response> {
     try {
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const result    = await this.service.approve(sessionId, clerkId)
       return c.json({ application: result })
@@ -249,7 +249,7 @@ export class OnboardingController {
       const parsed = rejectSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
-      const clerkId   = c.get('userId') as string
+      const clerkId   = (c.get('authUser') as { userId: string }).userId
       const sessionId = c.req.param('sessionId') as string
       const result    = await this.service.reject(sessionId, clerkId, parsed.data.reason)
       return c.json({ application: result })

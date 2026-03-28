@@ -9,13 +9,19 @@ import { Heart, Plus, Trash2, MapPin } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 function WishlistCard({ wishlist, onDelete }: { wishlist: any; onDelete: (id: string) => void }) {
-  const coverImages = wishlist.listings?.slice(0, 4).map((l: any) => l.images?.[0]).filter(Boolean) ?? []
+  // API returns items[] with nested listing.images[]
+  const coverImages: string[] = (wishlist.items ?? [])
+    .slice(0, 4)
+    .map((item: any) => item.listing?.images?.[0]?.url)
+    .filter(Boolean)
+
+  const savedCount = wishlist._count?.items ?? wishlist.items?.length ?? 0
 
   return (
     <div className="group relative">
       <Link href={`/wishlists/${wishlist.id}`} className="block">
         {/* Image mosaic */}
-        <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-3">
+        <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-3 relative">
           {coverImages.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-navy/5 to-gold/10">
               <Heart size={32} className="text-gold/30" />
@@ -34,7 +40,7 @@ function WishlistCard({ wishlist, onDelete }: { wishlist: any; onDelete: (id: st
         </div>
         <div>
           <p className="font-semibold text-navy">{wishlist.name}</p>
-          <p className="text-sm text-muted mt-0.5">{wishlist.listings?.length ?? 0} saved</p>
+          <p className="text-sm text-muted mt-0.5">{savedCount} saved</p>
         </div>
       </Link>
 

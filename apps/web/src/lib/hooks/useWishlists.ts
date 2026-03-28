@@ -3,18 +3,33 @@ import useSWR, { useSWRConfig } from 'swr'
 import { useAuth } from '@clerk/nextjs'
 import { useAuthedRequest } from './useAuthedRequest'
 
-export interface WishlistItem {
-  id: string
+export interface WishlistListingImage {
+  url: string
+  isPrimary: boolean
+  sortOrder: number
+}
+
+export interface WishlistListingItem {
+  wishlistId: string
   listingId: string
   addedAt: string
+  listing?: {
+    id: string
+    title: string
+    images: WishlistListingImage[]
+    basePrice: number
+    currency: string
+    avgRating: string | number
+    totalReviews: number
+    address: { city: string; state: string; country: string }
+  }
 }
 
 export interface Wishlist {
   id: string
   name: string
-  itemCount: number
-  coverImageUrl: string | null
-  items?: WishlistItem[]
+  items?: WishlistListingItem[]
+  _count?: { items: number }
 }
 
 export function useWishlists() {
@@ -22,9 +37,13 @@ export function useWishlists() {
   const authedRequest = useAuthedRequest()
   const { data, isLoading, error, mutate } = useSWR(
     isSignedIn ? '/users/me/wishlists' : null,
-    (path: string) => authedRequest<Wishlist[]>(path)
+    async (path: string) => {
+      const res = await authedRequest<Wishlist[]>(path)
+      // Handle both standard envelope { success, data } and raw array
+      return (res as any)?.data ?? (Array.isArray(res) ? res : [])
+    }
   )
-  return { wishlists: data?.data ?? [], isLoading, error, mutate }
+  return { wishlists: (data ?? []) as Wishlist[], isLoading, error, mutate }
 }
 
 export function useWishlistCheck(listingId: string | null) {

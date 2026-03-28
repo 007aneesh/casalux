@@ -9,6 +9,7 @@ import { ImageGallery } from '@/components/listings/ImageGallery'
 import { AmenityGrid } from '@/components/listings/AmenityGrid'
 import { ReviewsSection } from '@/components/listings/ReviewsSection'
 import { BookingWidget } from '@/components/booking/BookingWidget'
+import { MobileBookingBar } from '@/components/booking/MobileBookingBar'
 import { ExpandableText } from '@/components/listings/ExpandableText'
 import { apiRequest } from '@/lib/api-client'
 import { formatPrice, pluralize } from '@/lib/utils'
@@ -69,7 +70,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const country = addr?.country ?? ''
 
   return (
-    <div className="mx-auto max-w-screen-xl px-4 sm:px-6 py-8">
+    <div className="mx-auto max-w-screen-xl px-4 sm:px-6 py-8 pb-24 lg:pb-8">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-muted mb-4">
         <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
@@ -89,34 +90,34 @@ export default async function ListingDetailPage({ params }: PageProps) {
       </nav>
 
       {/* Title row */}
-      <div className="flex items-start justify-between gap-4 mb-5">
-        <div>
-          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-foreground leading-snug">
-            {listing.title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-3 mt-2">
-            {listing.totalReviews > 0 && (
-              <div className="flex items-center gap-1 text-sm font-medium">
-                <Star className="h-4 w-4 fill-foreground text-foreground" />
-                <span>{listing.avgRating.toFixed(2)}</span>
-                <span className="text-muted font-normal">
-                  ({listing.totalReviews} {pluralize(listing.totalReviews, 'review')})
-                </span>
-              </div>
-            )}
-            <span className="text-muted">·</span>
-            <div className="flex items-center gap-1 text-sm text-muted">
-              <MapPin className="h-3.5 w-3.5" />
-              {[city, state, country].filter(Boolean).join(', ')}
+      <div className="mb-5">
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-foreground leading-snug">
+          {listing.title}
+        </h1>
+        <div className="flex flex-wrap items-center gap-3 mt-2">
+          {listing.totalReviews > 0 && (
+            <div className="flex items-center gap-1 text-sm font-medium">
+              <Star className="h-4 w-4 fill-foreground text-foreground" />
+              <span>{listing.avgRating.toFixed(2)}</span>
+              <span className="text-muted font-normal">
+                ({listing.totalReviews} {pluralize(listing.totalReviews, 'review')})
+              </span>
             </div>
+          )}
+          <span className="text-muted">·</span>
+          <div className="flex items-center gap-1 text-sm text-muted">
+            <MapPin className="h-3.5 w-3.5" />
+            {[city, state, country].filter(Boolean).join(', ')}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {listing.instantBook && <Badge variant="gold">⚡ Instant Book</Badge>}
-          {listing.avgRating >= 4.9 && listing.totalReviews >= 10 && (
-            <Badge variant="default">Guest favourite</Badge>
-          )}
-        </div>
+        {(listing.instantBook || (listing.avgRating >= 4.9 && listing.totalReviews >= 10)) && (
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {listing.instantBook && <Badge variant="gold">⚡ Instant Book</Badge>}
+            {listing.avgRating >= 4.9 && listing.totalReviews >= 10 && (
+              <Badge variant="default">Guest favourite</Badge>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Image gallery */}
@@ -185,13 +186,16 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
           <Separator />
 
-          {/* Amenities */}
-          <div>
-            <h2 className="font-display text-xl font-semibold text-foreground mb-4">What this place offers</h2>
-            <AmenityGrid amenities={listing.amenities} />
-          </div>
-
-          <Separator />
+          {/* Amenities — only render section if there are known amenities */}
+          {listing.amenities?.some((s) => s) && (
+            <>
+              <div>
+                <h2 className="font-display text-xl font-semibold text-foreground mb-4">What this place offers</h2>
+                <AmenityGrid amenities={listing.amenities} />
+              </div>
+              <Separator />
+            </>
+          )}
 
           {/* Reviews */}
           <div>
@@ -236,24 +240,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Mobile sticky booking bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 py-3 flex items-center justify-between z-40 shadow-search">
-        <div>
-          <p className="font-semibold text-foreground">
-            {formatPrice(listing.basePrice, listing.currency)}
-            <span className="font-normal text-muted text-sm"> / night</span>
-          </p>
-          {listing.totalReviews > 0 && (
-            <p className="text-xs text-muted">★ {listing.avgRating.toFixed(2)} · {listing.totalReviews} reviews</p>
-          )}
-        </div>
-        <Link
-          href={`/listings/${listing.id}/book`}
-          className="bg-navy text-white rounded-xl px-6 py-2.5 text-sm font-semibold hover:bg-navy-800 transition-colors"
-        >
-          {listing.instantBook ? '⚡ Reserve' : 'Request'}
-        </Link>
-      </div>
+      {/* Mobile booking bar — interactive bottom sheet */}
+      <MobileBookingBar listing={listing} />
     </div>
   )
 }

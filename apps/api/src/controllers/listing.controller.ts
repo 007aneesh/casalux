@@ -208,12 +208,14 @@ export class ListingController {
     const lat      = c.req.query('lat')   ? parseFloat(c.req.query('lat')!)   : undefined
     const lng      = c.req.query('lng')   ? parseFloat(c.req.query('lng')!)   : undefined
     const limit    = parseInt(c.req.query('limit') ?? '20', 10)
+    const type     = c.req.query('type') ?? undefined
 
     const result = await this.service.getRecommended(
       authUser?.userId ?? 'anonymous',
       lat,
       lng,
-      limit
+      limit,
+      type
     )
     return c.json({ success: true, data: result })
   }

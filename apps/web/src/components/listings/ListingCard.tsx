@@ -10,6 +10,7 @@ import { useWishlistCheck, useWishlistActions } from '@/lib/hooks/useWishlists'
 import { useAuth } from '@clerk/nextjs'
 import { Badge } from '@casalux/ui'
 import type { Listing } from '@casalux/types'
+import { WishlistPicker } from './WishlistPicker'
 
 interface ListingCardProps {
   listing: Listing
@@ -21,8 +22,9 @@ export function ListingCard({ listing, className, priority = false }: ListingCar
   const { isSignedIn } = useAuth()
   const [currentImage, setCurrentImage] = useState(0)
   const [isWishlistLoading, setIsWishlistLoading] = useState(false)
-  const { isSaved, mutate: mutateWishlist } = useWishlistCheck(listing.id)
-  const { quickSave, removeFromWishlist } = useWishlistActions()
+  const [showPicker, setShowPicker] = useState(false)
+  const { isSaved, wishlistId, mutate: mutateWishlist } = useWishlistCheck(listing.id)
+  const { removeFromWishlist } = useWishlistActions()
 
   const images = (listing?.images?.length ?? 0) > 0
     ? [...listing.images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -46,16 +48,28 @@ export function ListingCard({ listing, className, priority = false }: ListingCar
   const handleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault()
     if (!isSignedIn || isWishlistLoading) return
-    setIsWishlistLoading(true)
-    try {
-      await quickSave(listing.id)
-      mutateWishlist()
-    } finally {
-      setIsWishlistLoading(false)
+
+    if (isSaved && wishlistId) {
+      setIsWishlistLoading(true)
+      try {
+        await removeFromWishlist(wishlistId, listing.id)
+        mutateWishlist()
+      } finally {
+        setIsWishlistLoading(false)
+      }
+    } else {
+      setShowPicker(true)
     }
   }
 
   return (
+    <>
+    {showPicker && (
+      <WishlistPicker
+        listingId={listing.id}
+        onClose={() => { setShowPicker(false); mutateWishlist() }}
+      />
+    )}
     <Link
       href={`/listings/${listing.id}`}
       className={cn('group block', className)}
@@ -182,6 +196,7 @@ export function ListingCard({ listing, className, priority = false }: ListingCar
         </p>
       </div>
     </Link>
+    </>
   )
 }
 

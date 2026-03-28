@@ -19,15 +19,22 @@ export class LocationController {
   /** GET /api/v1/locations/autocomplete?q= */
   async autocomplete(c: Context): Promise<Response> {
     try {
-      const q = c.req.query('q')
-      if (!q || q.length < 1) return c.json({ results: [] })
+      const q = c.req.query('q') ?? ''
 
       const authUser = c.get('authUser') as { userId?: string } | undefined
-      const results  = await this.service.autocomplete({
+      const raw  = await this.service.autocomplete({
         q,
         clerkId: authUser?.userId,
       })
-      return c.json({ results })
+
+      // Map internal AutocompleteItem to the LocationSuggestion shape the frontend expects
+      const data = raw.map((item, i) => ({
+        id:       item.placeId ?? `${item.type}-${i}`,
+        label:    item.description,
+        type:     item.type,
+      }))
+
+      return c.json({ success: true, data })
     } catch (err) {
       return handleLocationError(err, c)
     }

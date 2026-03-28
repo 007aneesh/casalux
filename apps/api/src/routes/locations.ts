@@ -10,9 +10,9 @@
 import { Hono } from 'hono'
 import { LocationService }    from '../services/location.service.js'
 import { LocationController } from '../controllers/location.controller.js'
-import { cacheService } from '../container.js'
+import { cacheService, searchService } from '../container.js'
 
-const service    = new LocationService(cacheService)
+const service    = new LocationService(cacheService, searchService)
 const controller = new LocationController(service)
 
 export const locationsRouter = new Hono()

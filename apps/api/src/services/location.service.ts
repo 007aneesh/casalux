@@ -11,6 +11,7 @@
  */
 import type { CacheService } from '@casalux/services-cache'
 import { CacheKeys } from '@casalux/services-cache'
+import type { ISearchService } from '@casalux/services-search'
 import { SearchHistoryRepository } from '../repositories/search-history.repository.js'
 import type { SearchHistoryEntry } from '../repositories/search-history.repository.js'
 
@@ -30,7 +31,10 @@ export class LocationService {
   private readonly historyRepo = new SearchHistoryRepository()
   private readonly googleKey   = process.env['GOOGLE_MAPS_API_KEY'] ?? ''
 
-  constructor(private readonly cache: CacheService) {}
+  constructor(
+    private readonly cache: CacheService,
+    private readonly search?: ISearchService,
+  ) {}
 
   // ── Autocomplete ────────────────────────────────────────────────────────────
 
@@ -51,6 +55,12 @@ export class LocationService {
       // 3. Google Places
       this.getPlaces(q).then((items) => results.push(...items)),
     ])
+
+    // 4. Fallback: search listing cities in ES when other sources yield nothing
+    if (results.length === 0 && q.length >= 1) {
+      const cityResults = await this.searchListingCities(q)
+      results.push(...cityResults)
+    }
 
     return results
   }
@@ -79,6 +89,38 @@ export class LocationService {
       .filter((loc) => loc.toLowerCase().startsWith(prefix))
       .slice(0, 3)
       .map((description) => ({ type: 'popular' as const, description }))
+  }
+
+  private async searchListingCities(q: string): Promise<AutocompleteItem[]> {
+    if (!this.search) return []
+    try {
+      const result = await this.search.search<{ city: string; country: string }>('listings', {
+        filters: {
+          bool: {
+            must: [
+              { term: { status: 'active' } },
+              { prefix: { city: q.toLowerCase() } },
+            ],
+          },
+        },
+        page:  1,
+        limit: 20,
+      })
+      // Deduplicate by city
+      const seen = new Set<string>()
+      const items: AutocompleteItem[] = []
+      for (const hit of result.hits) {
+        const city = hit.city
+        if (city && !seen.has(city.toLowerCase())) {
+          seen.add(city.toLowerCase())
+          items.push({ type: 'popular', description: city })
+        }
+        if (items.length >= 5) break
+      }
+      return items
+    } catch {
+      return []
+    }
   }
 
   private async getPlaces(q: string): Promise<AutocompleteItem[]> {

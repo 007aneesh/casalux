@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useSearchStore } from '@/lib/store/search'
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  all: Home,
   beachfront: Waves,
   amazing_pools: Sparkles,
   cabins: Trees,
@@ -17,6 +18,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 }
 
 const DEFAULT_FILTERS = [
+  { slug: 'all',          label: 'All' },
   { slug: 'trending',     label: 'Trending' },
   { slug: 'beachfront',   label: 'Beachfront' },
   { slug: 'amazing_pools',label: 'Amazing Pools' },
@@ -49,6 +51,11 @@ export function QuickFilters({ onFilterChange }: QuickFiltersProps) {
   }
 
   const handleSelect = (slug: string) => {
+    if (slug === 'all') {
+      setActiveQuickFilter(null)
+      onFilterChange?.(null)
+      return
+    }
     const next = activeQuickFilter === slug ? null : slug
     setActiveQuickFilter(next)
     onFilterChange?.(next)
@@ -75,7 +82,7 @@ export function QuickFilters({ onFilterChange }: QuickFiltersProps) {
       >
         {DEFAULT_FILTERS.map(({ slug, label }) => {
           const Icon = ICON_MAP[slug]
-          const isActive = activeQuickFilter === slug
+          const isActive = slug === 'all' ? !activeQuickFilter : activeQuickFilter === slug
           return (
             <button
               key={slug}

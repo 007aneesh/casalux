@@ -82,15 +82,21 @@ const PREVIEW_COUNT = 10
 
 export function AmenityGrid({ amenities }: AmenityGridProps) {
   const [expanded, setExpanded] = useState(false)
-  const visible = expanded ? amenities : amenities.slice(0, PREVIEW_COUNT)
-  const hasMore = amenities.length > PREVIEW_COUNT
+
+  // Only render amenities that have a known label
+  const known = amenities.filter((slug) => !!AMENITY_LABELS[slug])
+
+  if (known.length === 0) return null
+
+  const visible = expanded ? known : known.slice(0, PREVIEW_COUNT)
+  const hasMore = known.length > PREVIEW_COUNT
 
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {visible?.map((slug) => {
+        {visible.map((slug) => {
           const Icon = AMENITY_ICONS[slug] ?? AMENITY_ICONS.default
-          const label = AMENITY_LABELS[slug] ?? ''
+          const label = AMENITY_LABELS[slug]
           return (
             <div key={slug} className="flex items-center gap-3 py-2">
               <Icon className="h-5 w-5 text-foreground shrink-0" />
@@ -106,7 +112,7 @@ export function AmenityGrid({ amenities }: AmenityGridProps) {
             size="sm"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? 'Show fewer amenities' : `Show all ${amenities.length} amenities`}
+            {expanded ? 'Show fewer amenities' : `Show all ${known.length} amenities`}
           </Button>
         </div>
       )}
