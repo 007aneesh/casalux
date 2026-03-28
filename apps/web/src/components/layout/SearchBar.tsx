@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, MapPin, CalendarDays, Users, X, Clock, TrendingUp } from 'lucide-react'
+import { DayPicker, type DateRange } from 'react-day-picker'
+import { format, startOfToday } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useLocationAutocomplete } from '@/lib/hooks/useLocationAutocomplete'
 import { useSearchStore } from '@/lib/store/search'
@@ -37,9 +39,10 @@ export function SearchBar({ compact = false }: SearchBarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleSearch = () => {
+  const handleSearch = (overrideLocation?: string) => {
     const params: Record<string, unknown> = {}
-    if (selectedLocation) params.location = selectedLocation
+    const loc = overrideLocation ?? selectedLocation
+    if (loc) params.location = loc
     if (checkIn) params.checkIn = checkIn
     if (checkOut) params.checkOut = checkOut
     if (guests > 1) params.guests = guests
@@ -73,7 +76,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
         </button>
 
         {open && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border shadow-search-hover z-50 overflow-hidden">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border shadow-search-hover z-[200] overflow-hidden">
             <LocationPanel
               query={query}
               setQuery={setQuery}
@@ -82,12 +85,12 @@ export function SearchBar({ compact = false }: SearchBarProps) {
               onSelect={(loc) => {
                 setSelectedLocation(loc)
                 setQuery(loc)
-                setActivePanel('dates')
+                handleSearch(loc)
               }}
             />
             <div className="border-t border-border p-4 flex items-center justify-end">
               <button
-                onClick={handleSearch}
+                onClick={() => handleSearch()}
                 className="flex items-center gap-2 bg-navy text-white rounded-xl px-5 py-2.5 text-sm font-medium hover:bg-navy-800 transition-colors"
               >
                 <Search className="h-4 w-4" />
@@ -102,7 +105,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
 
   // Full expanded search bar (hero)
   return (
-    <div ref={containerRef} className="w-full max-w-3xl mx-auto">
+    <div ref={containerRef} className="w-full max-w-3xl mx-auto relative">
       <div className={cn(
         'flex flex-col sm:flex-row items-stretch rounded-2xl border border-border bg-card shadow-search',
         'hover:shadow-search-hover transition-shadow duration-300',
@@ -179,7 +182,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
 
       {/* Dropdown panels */}
       {open && activePanel === 'location' && (
-        <div className="mt-2 bg-card rounded-2xl border border-border shadow-search-hover z-50 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border shadow-search-hover z-[200] overflow-hidden">
           <LocationPanel
             query={query}
             setQuery={setQuery}
@@ -194,8 +197,19 @@ export function SearchBar({ compact = false }: SearchBarProps) {
         </div>
       )}
 
+      {open && activePanel === 'dates' && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border shadow-search-hover z-[200] overflow-hidden max-h-auto">
+          <DatesPanel
+            checkIn={checkIn}
+            checkOut={checkOut}
+            onChange={(ci, co) => { setCheckIn(ci); setCheckOut(co) }}
+            onDone={() => setActivePanel('guests')}
+          />
+        </div>
+      )}
+
       {open && activePanel === 'guests' && (
-        <div className="mt-2 bg-card rounded-2xl border border-border shadow-search-hover p-6 z-50">
+        <div className="absolute top-full right-0 mt-2 w-72 bg-card rounded-2xl border border-border shadow-search-hover p-6 z-50">
           <GuestsPanel guests={guests} setGuests={setGuests} />
         </div>
       )}
@@ -255,6 +269,85 @@ function LocationPanel({
           <p className="text-sm text-muted text-center py-4">No results found</p>
         )}
       </div>
+    </div>
+  )
+}
+
+function DatesPanel({
+  checkIn, checkOut, onChange, onDone
+}: {
+  checkIn: string
+  checkOut: string
+  onChange: (checkIn: string, checkOut: string) => void
+  onDone: () => void
+}) {
+  const today = startOfToday()
+  const [range, setRange] = useState<DateRange | undefined>(() => {
+    const from = checkIn ? new Date(checkIn) : undefined
+    const to   = checkOut ? new Date(checkOut) : undefined
+    return from ? { from, to } : undefined
+  })
+
+  const handleSelect = (r: DateRange | undefined) => {
+    setRange(r)
+    const ci = r?.from ? format(r.from, 'yyyy-MM-dd') : ''
+    const co = r?.to   ? format(r.to,   'yyyy-MM-dd') : ''
+    onChange(ci, co)
+    if (r?.from && r?.to) onDone()
+  }
+
+  return (
+    <div className="p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-semibold text-foreground">
+          {!range?.from ? 'Select check-in date' : !range?.to ? 'Select check-out date' : `${format(range.from, 'MMM d')} – ${format(range.to, 'MMM d, yyyy')}`}
+        </p>
+        {(range?.from || range?.to) && (
+          <button
+            onClick={() => { setRange(undefined); onChange('', '') }}
+            className="text-xs text-muted hover:text-foreground transition-colors"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <DayPicker
+        mode="range"
+        selected={range}
+        onSelect={handleSelect}
+        numberOfMonths={2}
+        fromDate={today}
+        showOutsideDays={false}
+        classNames={{
+          months:           'flex flex-col sm:flex-row gap-6',
+          month:            'space-y-3',
+          caption:          'flex justify-center relative items-center h-8',
+          caption_label:    'text-sm font-semibold text-foreground',
+          nav:              'flex items-center gap-1',
+          nav_button:       cn(
+            'absolute h-7 w-7 rounded-lg border border-border bg-card',
+            'flex items-center justify-center text-muted hover:text-foreground hover:border-foreground transition-colors'
+          ),
+          nav_button_previous: 'left-0',
+          nav_button_next:     'right-0',
+          table:            'w-full border-collapse mt-1',
+          head_row:         'flex',
+          head_cell:        'w-9 text-center text-xs font-medium text-muted pb-1',
+          row:              'flex w-full mt-0.5',
+          cell:             'relative w-9 h-9 p-0 text-center text-sm',
+          day:              cn(
+            'w-9 h-9 rounded-full text-sm font-medium transition-colors',
+            'hover:bg-surface text-foreground aria-selected:opacity-100 focus:outline-none'
+          ),
+          day_range_start:  '!bg-navy !text-white rounded-full',
+          day_range_end:    '!bg-navy !text-white rounded-full',
+          day_range_middle: '!bg-navy/10 !text-navy rounded-none',
+          day_selected:     '!bg-navy !text-white',
+          day_today:        'font-bold text-gold',
+          day_outside:      'text-muted/30 pointer-events-none',
+          day_disabled:     'text-muted/25 cursor-not-allowed pointer-events-none',
+        }}
+      />
     </div>
   )
 }

@@ -102,7 +102,7 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative bg-navy overflow-hidden">
+      <section className="relative z-10 bg-navy">
         <div
           className="absolute inset-0 bg-cover bg-center opacity-30"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&q=80')" }}
@@ -129,7 +129,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-screen-xl px-4 sm:px-6">
+      <div className="relative z-0 mx-auto max-w-screen-xl px-4 sm:px-6">
 
         {/* City destinations */}
         <section className="py-10">

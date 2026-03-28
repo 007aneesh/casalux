@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { SlidersHorizontal, X, Star } from 'lucide-react'
-import { useState } from 'react'
 import { Button, Badge, Separator } from '@casalux/ui'
 import { ListingCard, ListingCardSkeleton } from '@/components/listings/ListingCard'
 import { QuickFilters } from '@/components/listings/QuickFilters'
@@ -101,6 +100,8 @@ export default function SearchPage() {
 
 function ActiveFilters() {
   const { params, setParams } = useSearchStore()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const chips: Array<{ key: string; label: string }> = []
 
   if (params.location) chips.push({ key: 'location', label: params.location })
@@ -111,12 +112,25 @@ function ActiveFilters() {
 
   if (chips.length === 0) return null
 
+  const removeFromUrl = (key: string) => {
+    const next = new URLSearchParams(searchParams.toString())
+    if (key === 'dates') { next.delete('checkIn'); next.delete('checkOut') }
+    else next.delete(key)
+    const qs = next.toString()
+    router.replace(qs ? `/search?${qs}` : '/search')
+  }
+
+  const clearAll = () => {
+    setParams({})
+    router.replace('/search')
+  }
+
   return (
     <div className="flex flex-wrap gap-2 mb-4">
       {chips.map((chip) => (
         <button
           key={chip.key}
-          onClick={() => setParams({ [chip.key]: undefined })}
+          onClick={() => { setParams({ [chip.key]: undefined }); removeFromUrl(chip.key) }}
           className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:border-foreground transition-colors"
         >
           {chip.label}
@@ -124,7 +138,7 @@ function ActiveFilters() {
         </button>
       ))}
       <button
-        onClick={() => setParams({})}
+        onClick={clearAll}
         className="text-xs font-semibold text-foreground underline underline-offset-2 px-2"
       >
         Clear all
