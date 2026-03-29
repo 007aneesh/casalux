@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getUsers } from '@/lib/api'
 
 const ROLE_BADGE: Record<string, string> = {
@@ -8,12 +9,17 @@ const ROLE_BADGE: Record<string, string> = {
 }
 
 const VERIFY_BADGE: Record<string, string> = {
-  unverified: 'bg-gray-100 text-gray-600',
-  pending:    'bg-yellow-100 text-yellow-700',
+  unverified: 'bg-gray-100 text-gray-500',
   verified:   'bg-green-100 text-green-700',
 }
 
-export default async function UsersPage({ searchParams }: { searchParams: Promise<{ page?: string; role?: string }> }) {
+const ROLES = ['', 'guest', 'host', 'admin']
+
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; role?: string }>
+}) {
   const { page: pageStr, role } = await searchParams
   const page = parseInt(pageStr ?? '1', 10)
 
@@ -30,8 +36,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <p className="text-sm text-gray-500 mt-0.5">{data.total} total</p>
         </div>
         <div className="flex gap-2">
-          {['', 'guest', 'host', 'admin'].map((r) => (
-            <a
+          {ROLES.map((r) => (
+            <Link
               key={r}
               href={r ? `/users?role=${r}` : '/users'}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
@@ -41,7 +47,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               }`}
             >
               {r || 'All'}
-            </a>
+            </Link>
           ))}
         </div>
       </div>
@@ -50,8 +56,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              {['Name', 'Email', 'Role', 'Verified', 'Joined'].map((col) => (
-                <th key={col} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {['User', 'Role', 'Verified', 'Status', 'Joined', ''].map((col) => (
+                <th key={col} className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   {col}
                 </th>
               ))}
@@ -60,25 +66,44 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <tbody className="divide-y divide-gray-200">
             {data.users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-16 text-center text-gray-400">No users found</td>
+                <td colSpan={6} className="px-6 py-16 text-center text-gray-400">No users found</td>
               </tr>
             ) : (
               data.users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{u.firstName} {u.lastName}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
-                  <td className="px-6 py-4">
+                <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${u.deletedAt ? 'opacity-50' : ''}`}>
+                  <td className="px-5 py-4">
+                    <div className="text-sm font-medium text-gray-900">{u.firstName} {u.lastName}</div>
+                    <div className="text-xs text-gray-400">{u.email}</div>
+                  </td>
+                  <td className="px-5 py-4">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${ROLE_BADGE[u.role] ?? 'bg-gray-100 text-gray-700'}`}>
-                      {u.role}
+                      {u.role.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${VERIFY_BADGE[u.verificationStatus] ?? 'bg-gray-100 text-gray-600'}`}>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${VERIFY_BADGE[u.verificationStatus] ?? 'bg-gray-100 text-gray-500'}`}>
                       {u.verificationStatus}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                  <td className="px-5 py-4">
+                    {u.deletedAt ? (
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">deleted</span>
+                    ) : u.isBanned ? (
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">banned</span>
+                    ) : (
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">active</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4 text-sm text-gray-400 whitespace-nowrap">
                     {new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </td>
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <Link
+                      href={`/users/${u.id}`}
+                      className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors"
+                    >
+                      View
+                    </Link>
                   </td>
                 </tr>
               ))
@@ -92,12 +117,12 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <span>Page {data.page} of {totalPages}</span>
           <div className="flex gap-2">
             {data.page > 1 && (
-              <a href={`/users?page=${data.page - 1}${role ? `&role=${role}` : ''}`}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-400 transition-colors">← Prev</a>
+              <Link href={`/users?page=${data.page - 1}${role ? `&role=${role}` : ''}`}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-400 transition-colors">← Prev</Link>
             )}
             {data.page < totalPages && (
-              <a href={`/users?page=${data.page + 1}${role ? `&role=${role}` : ''}`}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-400 transition-colors">Next →</a>
+              <Link href={`/users?page=${data.page + 1}${role ? `&role=${role}` : ''}`}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-400 transition-colors">Next →</Link>
             )}
           </div>
         </div>

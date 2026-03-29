@@ -266,7 +266,10 @@ export class ListingController {
     const authUser = c.get('authUser')
     const id   = c.req.param('id')
 
-    const listing = await sharedRepo.findByIdForHost(id, authUser.userId)
+    const isAdmin = authUser.role === 'admin' || authUser.role === 'super_admin'
+    const listing = isAdmin
+      ? await sharedRepo.findById(id)
+      : await sharedRepo.findByIdForHost(id, authUser.userId)
 
     if (!listing) {
       return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Listing not found' } }, 404)
@@ -287,7 +290,14 @@ export class ListingController {
     }
 
     try {
-      const listing = await this.service.updateListing(id, authUser.userId, parsed.data)
+      const isAdmin = authUser.role === 'admin' || authUser.role === 'super_admin'
+      let hostId = authUser.userId
+      if (isAdmin) {
+        const existing = await sharedRepo.findById(id)
+        if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Listing not found' } }, 404)
+        hostId = existing.hostId
+      }
+      const listing = await this.service.updateListing(id, hostId, parsed.data)
       return c.json({ success: true, data: this.service.shapeListing(listing) })
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_FOUND') {

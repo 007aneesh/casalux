@@ -39,14 +39,27 @@ adminRouter.use('*', requireAuth(), requireRole('admin'))
 adminRouter.get('/stats', (c) => adminController.getStats(c))
 
 // ─── Listings ─────────────────────────────────────────────────────────────────
-adminRouter.get(  '/listings',              (c) => adminController.getListings(c))
-adminRouter.patch('/listings/:id/status',   (c) => adminController.updateListingStatus(c))
+adminRouter.get(  '/listings',                      (c) => adminController.getListings(c))
+adminRouter.patch('/listings/:id/status',           (c) => adminController.updateListingStatus(c))
+adminRouter.post( '/listings/:id/amenities',        (c) => adminController.addCustomAmenity(c))
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────
-adminRouter.get('/bookings', (c) => adminController.getBookings(c))
+adminRouter.get(   '/bookings',              (c) => adminController.getBookings(c))
+adminRouter.get(   '/bookings/:id',          (c) => adminController.getBookingDetail(c))
+adminRouter.patch( '/bookings/:id/cancel',   (c) => adminController.cancelBooking(c))
+adminRouter.patch( '/bookings/:id/refund',   (c) => adminController.overrideRefund(c))
+adminRouter.patch( '/bookings/:id/payout',   (c) => adminController.overridePayout(c))
+adminRouter.patch( '/bookings/:id/dispute',  (c) => adminController.setDispute(c))
 
 // ─── Users ───────────────────────────────────────────────────────────────────
-adminRouter.get('/users', (c) => adminController.getUsers(c))
+adminRouter.get(   '/users',                    (c) => adminController.getUsers(c))
+adminRouter.get(   '/users/:id',                (c) => adminController.getUserDetail(c))
+adminRouter.patch( '/users/:id/ban',            (c) => adminController.banUser(c))
+adminRouter.patch( '/users/:id/unban',          (c) => adminController.unbanUser(c))
+adminRouter.patch( '/users/:id/verify',         (c) => adminController.setVerification(c))
+adminRouter.patch( '/users/:id/role',           (c) => adminController.changeRole(c))
+adminRouter.patch( '/users/:id/superhost',      (c) => adminController.toggleSuperhost(c))
+adminRouter.delete('/users/:id',                (c) => adminController.deleteUser(c))
 
 // ─── Host application review ─────────────────────────────────────────────────
 adminRouter.get( '/host-applications',                    (c) => onboardingController.listApplications(c))

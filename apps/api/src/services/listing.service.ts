@@ -387,15 +387,16 @@ export class ListingService {
       lng = geocoded.lng
     }
 
+    const { amenities, ...listingFields } = data
     const updated = await this.repo.update(id, {
-      ...data,
+      ...listingFields,
       ...(lat ? { lat: lat.toString() } : {}),
       ...(lng ? { lng: lng.toString() } : {}),
     })
 
     // Update amenities if provided
-    if (data.amenities) {
-      await this.repo.setAmenities(id, data.amenities)
+    if (amenities) {
+      await this.repo.setAmenities(id, amenities)
     }
 
     // Invalidate cache + reindex ES async
@@ -525,12 +526,15 @@ export class ListingService {
       // Return slug strings — matches Listing.amenities: string[] and what AmenityGrid expects
       amenities:   listing.amenities.map((a: any) => a.amenity.slug as string),
       host: {
-        id:                 listing.host.user.id,
-        firstName:          listing.host.user.firstName,
-        lastName:           listing.host.user.lastName,
-        profileImageUrl:    listing.host.user.profileImageUrl,
-        isSuperhost:        listing.host.isSuperhost,
-        responseRate:       listing.host.responseRate,
+        user: {
+          id:             listing.host.user.id,
+          firstName:      listing.host.user.firstName,
+          lastName:       listing.host.user.lastName,
+          email:          (listing.host.user as any).email ?? '',
+          profileImageUrl: listing.host.user.profileImageUrl,
+        },
+        isSuperhost:          listing.host.isSuperhost,
+        responseRate:         listing.host.responseRate,
         avgResponseTimeHours: listing.host.avgResponseTimeHours,
       },
     }

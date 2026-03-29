@@ -41,10 +41,7 @@ const onboardingController = new OnboardingController(onboardingService)
 export const hostRouter = new Hono()
 
 // ─── Protected routes (require auth + host role) ─────────────────────────────
-hostRouter.use('/listings*',        requireAuth(), requireRole('host'))
-hostRouter.use('/bookings*',        requireAuth(), requireRole('host'))
-hostRouter.use('/booking-requests*',requireAuth(), requireRole('host'))
-hostRouter.use('/stats*',           requireAuth(), requireRole('host'))
+hostRouter.use('*', requireAuth(), requireRole('host'))
 
 // ─── Listing management ───────────────────────────────────────────────────────
 hostRouter.post('/listings',                          (c) => controller.createListing(c))

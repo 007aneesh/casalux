@@ -23,6 +23,7 @@ const LISTING_INCLUDE = {
           firstName: true,
           lastName: true,
           profileImageUrl: true,
+          email: true,
         },
       },
     },
