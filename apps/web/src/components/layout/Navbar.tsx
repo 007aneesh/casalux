@@ -12,7 +12,6 @@ import {
   useUser,
 } from '@clerk/nextjs'
 import {
-  Globe,
   Menu,
   Home,
   Heart,
@@ -23,6 +22,8 @@ import {
 import { Button } from '@casalux/ui'
 import { cn } from '@/lib/utils'
 import { SearchBar } from './SearchBar'
+import { LanguagePicker } from './LanguagePicker'
+import { useTranslation } from '@/lib/i18n/store'
 
 const Logo = () => (
   <Link href="/" className="flex items-center gap-2 shrink-0">
@@ -42,6 +43,7 @@ export function Navbar() {
   const { user } = useUser()
   const role = user?.publicMetadata?.role as string | undefined
   const isHost = role === 'host' || role === 'admin'
+  const { t } = useTranslation()
 
   return (
     <header
@@ -70,7 +72,7 @@ export function Navbar() {
                 className="hidden lg:flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-surface transition-colors"
               >
                 <Building2 className="h-4 w-4" />
-                Host
+                {t.nav.host}
               </Link>
             )}
 
@@ -81,23 +83,21 @@ export function Navbar() {
                 className="hidden lg:flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-surface transition-colors"
               >
                 <Building2 className="h-4 w-4" />
-                Become a host
+                {t.nav.become_a_host}
               </Link>
             )}
 
             {/* Language */}
-            <button className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl text-muted hover:bg-surface hover:text-foreground transition-colors">
-              <Globe className="h-4 w-4" />
-            </button>
+            <LanguagePicker />
 
             {/* Auth */}
             <SignedOut>
               <div className="flex items-center gap-2">
                 <SignInButton mode="modal">
-                  <Button variant="ghost" size="sm">Sign in</Button>
+                  <Button variant="ghost" size="sm">{t.nav.sign_in}</Button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <Button variant="gold" size="sm">Sign up</Button>
+                  <Button variant="gold" size="sm">{t.nav.sign_up}</Button>
                 </SignUpButton>
               </div>
             </SignedOut>
@@ -150,21 +150,21 @@ export function Navbar() {
         {menuOpen && (
           <div className="md:hidden border-t border-border py-3 space-y-1">
             <Link href="/bookings" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
-              <CalendarDays className="h-4 w-4 text-muted" /> My Bookings
+              <CalendarDays className="h-4 w-4 text-muted" /> {t.nav.my_bookings}
             </Link>
             <Link href="/wishlists" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
-              <Heart className="h-4 w-4 text-muted" /> Wishlists
+              <Heart className="h-4 w-4 text-muted" /> {t.nav.wishlists}
             </Link>
             <Link href="/messages" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
-              <MessageSquare className="h-4 w-4 text-muted" /> Messages
+              <MessageSquare className="h-4 w-4 text-muted" /> {t.nav.messages}
             </Link>
             {isHost ? (
               <Link href="/host/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                <Building2 className="h-4 w-4 text-muted" /> Host Dashboard
+                <Building2 className="h-4 w-4 text-muted" /> {t.nav.host_dashboard}
               </Link>
             ) : (
               <Link href="/become-a-host" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface text-sm font-medium" onClick={() => setMenuOpen(false)}>
-                <Building2 className="h-4 w-4 text-muted" /> Become a host
+                <Building2 className="h-4 w-4 text-muted" /> {t.nav.become_a_host}
               </Link>
             )}
           </div>
