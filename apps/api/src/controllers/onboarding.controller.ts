@@ -24,12 +24,14 @@ import type { OnboardingService } from '../services/onboarding.service.js'
 
 function handleOnboardingError(err: unknown, c: Context) {
   const msg = err instanceof Error ? err.message : ''
-  if (msg === 'SESSION_NOT_FOUND')        return c.json({ error: 'Session not found' }, 404)
-  if (msg === 'SESSION_ALREADY_SUBMITTED') return c.json({ error: 'Session already submitted' }, 409)
-  if (msg.startsWith('Incomplete'))       return c.json({ error: msg }, 422)
-  if (msg.startsWith('Base price'))       return c.json({ error: msg }, 422)
-  if (msg.startsWith('At least one'))     return c.json({ error: msg }, 422)
-  if (msg.startsWith('Application is'))   return c.json({ error: msg }, 409)
+  if (msg === 'SESSION_NOT_FOUND')          return c.json({ error: 'Session not found' }, 404)
+  if (msg === 'SESSION_ALREADY_SUBMITTED')  return c.json({ error: 'Session already submitted' }, 409)
+  if (msg === 'APPLICATION_UNDER_REVIEW')   return c.json({ error: 'APPLICATION_UNDER_REVIEW', message: 'Your application is under review' }, 409)
+  if (msg === 'APPLICATION_ALREADY_APPROVED') return c.json({ error: 'APPLICATION_ALREADY_APPROVED', message: 'Your application has been approved' }, 409)
+  if (msg.startsWith('Incomplete'))         return c.json({ error: msg }, 422)
+  if (msg.startsWith('Base price'))         return c.json({ error: msg }, 422)
+  if (msg.startsWith('At least one'))       return c.json({ error: msg }, 422)
+  if (msg.startsWith('Application is'))     return c.json({ error: msg }, 409)
   console.error('[OnboardingController]', err)
   return c.json({ error: 'Internal server error' }, 500)
 }
@@ -86,6 +88,17 @@ const rejectSchema = z.object({
 
 export class OnboardingController {
   constructor(private readonly service: OnboardingService) {}
+
+  /** GET /host/onboarding/status — returns the user's latest application status */
+  async getMyStatus(c: Context): Promise<Response> {
+    try {
+      const clerkId = (c.get('authUser') as { userId: string }).userId
+      const result  = await this.service.getMyStatus(clerkId)
+      return c.json({ success: true, data: result })
+    } catch (err) {
+      return handleOnboardingError(err, c)
+    }
+  }
 
   /** POST /host/onboarding/start */
   async start(c: Context): Promise<Response> {

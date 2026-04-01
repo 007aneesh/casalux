@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Check, Home } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, Home, Images } from 'lucide-react'
 import { useAuthedRequest } from '@/lib/hooks/useAuthedRequest'
-import { useAuth } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
+import ImageUploader from '@/components/host/ImageUploader'
+import Link from 'next/link'
 
-const STEPS = ['Type', 'Location', 'Details', 'Pricing', 'Review']
+const STEPS = ['Type', 'Location', 'Details', 'Pricing', 'Review', 'Photos']
 
 const PROPERTY_TYPES = [
   { value: 'apartment', label: 'Apartment' },
@@ -135,16 +137,16 @@ function NumericField({ label, value, onChange, min = 0 }: {
 
 export default function NewListingPage() {
   const router = useRouter()
-  const { sessionClaims } = useAuth()
+  const { user } = useUser()
   const authedRequest = useAuthedRequest()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<FormData>(DEFAULT_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [becomingHost, setBecomingHost] = useState(false)
+  const [createdListingId, setCreatedListingId] = useState<string | null>(null)
 
-  // Check user role from Clerk session claims
-  const role = (sessionClaims as any)?.['publicMetadata']?.['role'] ?? (sessionClaims as any)?.role ?? 'guest'
+  const role   = user?.publicMetadata?.role as string | undefined
   const isHost = role === 'host' || role === 'admin' || role === 'super_admin'
 
   const set = (key: keyof FormData, value: any) => setForm((f) => ({ ...f, [key]: value }))
@@ -163,7 +165,6 @@ export default function NewListingPage() {
     setBecomingHost(true)
     setError(null)
     try {
-      // Start the onboarding session — no host role required
       const res = await authedRequest<any>('/host/onboarding/start', { method: 'POST' })
       const sessionId = (res as any)?.session?.id ?? (res as any)?.data?.session?.id
       if (sessionId) {
@@ -178,7 +179,8 @@ export default function NewListingPage() {
     }
   }
 
-  async function handleSubmit() {
+  // Called from Review step — creates the draft listing and advances to Photos step
+  async function handleSaveDraft() {
     setSubmitting(true)
     setError(null)
     try {
@@ -205,9 +207,10 @@ export default function NewListingPage() {
         method: 'POST',
         body: JSON.stringify(payload),
       })
-      const id = (res as any)?.data?.id ?? (res as any)?.listing?.id
+      const id = res?.data?.id ?? (res as any)?.listing?.id
       if (id) {
-        router.push(`/host/listings`)
+        setCreatedListingId(id)
+        setStep(5) // advance to Photos step
       } else {
         setError('Failed to create listing. Please try again.')
       }
@@ -218,7 +221,6 @@ export default function NewListingPage() {
     }
   }
 
-  // If not a host yet, show the "become a host" prompt
   if (!isHost) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -248,12 +250,14 @@ export default function NewListingPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => step === 0 ? router.back() : setStep((s) => s - 1)}
-            className="h-9 w-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:border-gray-400 transition"
-          >
-            <ChevronLeft size={16} />
-          </button>
+          {step < 5 && (
+            <button
+              onClick={() => step === 0 ? router.back() : setStep((s) => s - 1)}
+              className="h-9 w-9 flex items-center justify-center rounded-full border border-gray-200 bg-white hover:border-gray-400 transition"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
           <div>
             <h1 className="font-display text-xl font-bold text-navy">New listing</h1>
           </div>
@@ -287,7 +291,6 @@ export default function NewListingPage() {
                   ))}
                 </div>
               </div>
-
               <div>
                 <h2 className="font-semibold text-navy mb-3">What will guests have?</h2>
                 <div className="space-y-2">
@@ -348,10 +351,10 @@ export default function NewListingPage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-navy mb-2">Capacity</h3>
-                <NumericField label="Guests" value={form.maxGuests} onChange={(v) => set('maxGuests', v)} min={1} />
-                <NumericField label="Bedrooms" value={form.bedrooms} onChange={(v) => set('bedrooms', v)} />
-                <NumericField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} min={1} />
-                <NumericField label="Bathrooms" value={form.baths} onChange={(v) => set('baths', v)} />
+                <NumericField label="Guests"    value={form.maxGuests} onChange={(v) => set('maxGuests', v)} min={1} />
+                <NumericField label="Bedrooms"  value={form.bedrooms}  onChange={(v) => set('bedrooms', v)} />
+                <NumericField label="Beds"      value={form.beds}      onChange={(v) => set('beds', v)} min={1} />
+                <NumericField label="Bathrooms" value={form.baths}     onChange={(v) => set('baths', v)} />
               </div>
             </>
           )}
@@ -359,11 +362,11 @@ export default function NewListingPage() {
           {/* Step 3: Pricing */}
           {step === 3 && (
             <>
-              <InputField label="Base price per night (₹)" value={form.basePrice} onChange={(v) => set('basePrice', parseInt(v) || 0)} type="number" placeholder="5000" required />
-              <InputField label="Cleaning fee (₹)" value={form.cleaningFee} onChange={(v) => set('cleaningFee', parseInt(v) || 0)} type="number" placeholder="0" />
-              <InputField label="Minimum nights" value={form.minNights} onChange={(v) => set('minNights', parseInt(v) || 1)} type="number" placeholder="1" />
+              <InputField label="Base price per night (₹)" value={form.basePrice}   onChange={(v) => set('basePrice',   parseInt(v) || 0)} type="number" placeholder="5000" required />
+              <InputField label="Cleaning fee (₹)"         value={form.cleaningFee} onChange={(v) => set('cleaningFee', parseInt(v) || 0)} type="number" placeholder="0" />
+              <InputField label="Minimum nights"            value={form.minNights}   onChange={(v) => set('minNights',   parseInt(v) || 1)} type="number" placeholder="1" />
               <div className="grid grid-cols-2 gap-3">
-                <InputField label="Check-in time" value={form.checkInTime} onChange={(v) => set('checkInTime', v)} type="time" />
+                <InputField label="Check-in time"  value={form.checkInTime}  onChange={(v) => set('checkInTime', v)}  type="time" />
                 <InputField label="Check-out time" value={form.checkOutTime} onChange={(v) => set('checkOutTime', v)} type="time" />
               </div>
               <div>
@@ -406,27 +409,42 @@ export default function NewListingPage() {
           {step === 4 && (
             <>
               <h2 className="font-semibold text-navy mb-1">Review your listing</h2>
-              <p className="text-sm text-muted mb-4">It will be saved as a draft. You can publish it anytime from your listings dashboard.</p>
+              <p className="text-sm text-muted mb-4">Looks good? Save it as a draft and then add photos in the next step.</p>
               <div className="space-y-3 text-sm">
-                <ReviewRow label="Type" value={`${PROPERTY_TYPES.find(t => t.value === form.propertyType)?.label} · ${ROOM_TYPES.find(t => t.value === form.roomType)?.label}`} />
-                <ReviewRow label="Location" value={[form.address.city, form.address.state, form.address.country].filter(Boolean).join(', ')} />
-                <ReviewRow label="Title" value={form.title} />
-                <ReviewRow label="Guests" value={`${form.maxGuests} guests · ${form.bedrooms} bed${form.bedrooms !== 1 ? 's' : ''} · ${form.baths} bath${form.baths !== 1 ? 's' : ''}`} />
-                <ReviewRow label="Price" value={`₹${form.basePrice.toLocaleString()}/night${form.cleaningFee > 0 ? ` · ₹${form.cleaningFee.toLocaleString()} cleaning fee` : ''}`} />
-                <ReviewRow label="Check-in / out" value={`${form.checkInTime} / ${form.checkOutTime}`} />
-                <ReviewRow label="Instant Book" value={form.instantBook ? 'Yes' : 'No'} />
-                <ReviewRow label="Cancellation" value={CANCELLATION_POLICIES.find(p => p.value === form.cancellationPolicy)?.label ?? ''} />
+                <ReviewRow label="Type"          value={`${PROPERTY_TYPES.find(t => t.value === form.propertyType)?.label} · ${ROOM_TYPES.find(t => t.value === form.roomType)?.label}`} />
+                <ReviewRow label="Location"      value={[form.address.city, form.address.state, form.address.country].filter(Boolean).join(', ')} />
+                <ReviewRow label="Title"         value={form.title} />
+                <ReviewRow label="Guests"        value={`${form.maxGuests} guests · ${form.bedrooms} bed${form.bedrooms !== 1 ? 's' : ''} · ${form.baths} bath${form.baths !== 1 ? 's' : ''}`} />
+                <ReviewRow label="Price"         value={`₹${form.basePrice.toLocaleString()}/night${form.cleaningFee > 0 ? ` · ₹${form.cleaningFee.toLocaleString()} cleaning fee` : ''}`} />
+                <ReviewRow label="Check-in/out"  value={`${form.checkInTime} / ${form.checkOutTime}`} />
+                <ReviewRow label="Instant Book"  value={form.instantBook ? 'Yes' : 'No'} />
+                <ReviewRow label="Cancellation"  value={CANCELLATION_POLICIES.find(p => p.value === form.cancellationPolicy)?.label ?? ''} />
               </div>
-              {error && (
-                <p className="text-sm text-red-500 mt-3">{error}</p>
-              )}
+              {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
+            </>
+          )}
+
+          {/* Step 5: Photos */}
+          {step === 5 && createdListingId && (
+            <>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-10 w-10 rounded-xl bg-gold/10 flex items-center justify-center">
+                  <Images size={20} className="text-gold" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-navy">Add photos</h2>
+                  <p className="text-xs text-muted">Great photos help guests choose your listing. You can also add them later from the edit page.</p>
+                </div>
+              </div>
+              <ImageUploader listingId={createdListingId} maxImages={10} />
             </>
           )}
         </div>
 
         {/* Navigation */}
         <div className="flex gap-3 mt-6">
-          {step > 0 && (
+          {/* Back button — not shown on Photos step */}
+          {step > 0 && step < 5 && (
             <button
               type="button"
               onClick={() => setStep((s) => s - 1)}
@@ -435,7 +453,9 @@ export default function NewListingPage() {
               <ChevronLeft size={16} /> Back
             </button>
           )}
-          {step < STEPS.length - 1 ? (
+
+          {/* Steps 0–3: Continue */}
+          {step < 4 && (
             <button
               type="button"
               disabled={!canNext()}
@@ -444,15 +464,38 @@ export default function NewListingPage() {
             >
               Continue <ChevronRight size={16} />
             </button>
-          ) : (
+          )}
+
+          {/* Step 4 (Review): Save draft & go to photos */}
+          {step === 4 && (
             <button
               type="button"
               disabled={submitting}
-              onClick={handleSubmit}
-              className="flex-1 py-3 bg-gold text-white rounded-xl text-sm font-semibold disabled:opacity-60 hover:bg-gold/90 transition"
+              onClick={handleSaveDraft}
+              className="flex-1 py-3 bg-gold text-white rounded-xl text-sm font-semibold disabled:opacity-60 hover:bg-gold/90 transition flex items-center justify-center gap-2"
             >
-              {submitting ? 'Creating…' : 'Create listing'}
+              {submitting ? 'Saving…' : <>Save draft & add photos <ChevronRight size={16} /></>}
             </button>
+          )}
+
+          {/* Step 5 (Photos): Finish */}
+          {step === 5 && (
+            <div className="flex flex-col gap-3 flex-1">
+              <Link
+                href="/host/listings"
+                className="w-full py-3 bg-navy text-white rounded-xl text-sm font-semibold hover:bg-navy/90 transition text-center"
+              >
+                Done — go to listings
+              </Link>
+              {createdListingId && (
+                <Link
+                  href={`/host/listings/${createdListingId}/edit`}
+                  className="w-full py-3 border border-gray-200 rounded-xl text-sm font-medium bg-white hover:border-gray-400 transition text-center text-navy"
+                >
+                  Edit full listing details
+                </Link>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -23,8 +23,8 @@ function ListingRow({ listing, onToggle, onDelete }: { listing: any; onToggle: (
     <div className="flex gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-card hover:shadow-card-hover transition-shadow">
       {/* Image */}
       <div className="relative w-24 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
-        {listing.images?.[0] ? (
-          <Image src={listing.images[0]} alt={listing.title} fill className="object-cover" sizes="96px" />
+        {listing.images?.[0]?.url ? (
+          <Image src={listing.images[0].url} alt={listing.title} fill className="object-cover" sizes="96px" />
         ) : (
           <div className="w-full h-full bg-navy/5" />
         )}
@@ -38,13 +38,13 @@ function ListingRow({ listing, onToggle, onDelete }: { listing: any; onToggle: (
           </Link>
           <Badge variant={badge.variant} className="flex-shrink-0">{badge.label}</Badge>
         </div>
-        <p className="text-xs text-muted mt-0.5">{listing.location.city}, {listing.location.country}</p>
+        <p className="text-xs text-muted mt-0.5">{listing.address?.city}, {listing.address?.country}</p>
         <div className="flex items-center gap-3 mt-2 text-xs text-muted">
-          <span className="font-semibold text-navy">{formatPrice(listing.pricePerNight)}/night</span>
-          {listing.avgRating && (
+          <span className="font-semibold text-navy">{formatPrice(listing.basePrice)}/night</span>
+          {listing.avgRating > 0 && (
             <span className="flex items-center gap-0.5">
               <Star size={10} className="text-gold fill-gold" />
-              {listing.avgRating.toFixed(1)} ({listing.reviewCount})
+              {listing.avgRating.toFixed(1)} ({listing.totalReviews})
             </span>
           )}
           {listing.instantBook && (

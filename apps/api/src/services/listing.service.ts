@@ -16,6 +16,7 @@ import { QUEUES } from '@casalux/services-queue'
 import { calculatePrice, daysUntilCheckIn } from '@casalux/utils'
 import type { ListingSearchParams } from '@casalux/types'
 import type { ListingStatus, PropertyType, RoomType, CancellationPolicy, Prisma } from '@casalux/db'
+import { db } from '@casalux/db'
 import { ListingRepository } from '../repositories/listing.repository.js'
 import type { ListingWithRelations } from '../repositories/listing.repository.js'
 
@@ -320,8 +321,24 @@ export class ListingService {
     return result.hits
   }
 
+  // ─── Resolve HostProfile.id from the DB user id ──────────────────────────
+  // Upserts the HostProfile so hosts approved before the profile-creation fix
+  // automatically get a profile on first access.
+  async resolveHostProfileId(dbUserId: string): Promise<string> {
+    const profile = await db.hostProfile.upsert({
+      where:  { userId: dbUserId },
+      update: {},
+      create: { userId: dbUserId },
+      select: { id: true },
+    })
+    return profile.id
+  }
+
   // ─── Host: create listing ─────────────────────────────────────────────────
-  async createListing(hostId: string, data: CreateListingInput): Promise<ListingWithRelations> {
+  async createListing(dbUserId: string, data: CreateListingInput): Promise<ListingWithRelations> {
+    // Resolve the HostProfile primary-key id from the DB user id
+    const hostProfileId = await this.resolveHostProfileId(dbUserId)
+
     // Geocode address if lat/lng not provided
     let { lat, lng } = data
     if (!lat || !lng) {
@@ -331,7 +348,7 @@ export class ListingService {
     }
 
     const listing = await this.repo.create({
-      hostId,
+      hostId:      hostProfileId,
       title:       data.title,
       description: data.description,
       propertyType: data.propertyType as PropertyType,
@@ -357,7 +374,6 @@ export class ListingService {
       requireVerifiedId:      data.requireVerifiedId      ?? false,
       requireProfilePhoto:    data.requireProfilePhoto    ?? false,
       requirePositiveReviews: data.requirePositiveReviews ?? false,
-      host: { connect: { userId: hostId } },
     })
 
     // Set amenities separately
@@ -399,12 +415,18 @@ export class ListingService {
       await this.repo.setAmenities(id, amenities)
     }
 
-    // Invalidate cache + reindex ES async
+    // Invalidate cache + reindex ES (sync for immediate searchability, async for reliability)
     await this.cache.del(CacheKeys.listing(id))
     await this.cache.delPattern('cache:listings:*')
+
+    const refreshed = await this.repo.findById(id)
+    if (refreshed?.status === 'active') {
+      const doc = this.buildESDoc(refreshed)
+      await this.search.index('listings', id, doc as unknown as Record<string, unknown>).catch(() => {})
+    }
     await this.enqueueSearchIndex(id)
 
-    return (await this.repo.findById(id))!
+    return refreshed!
   }
 
   // ─── Host: update status ──────────────────────────────────────────────────
@@ -417,9 +439,16 @@ export class ListingService {
     await this.cache.delPattern('cache:listings:*')
 
     if (status === 'active') {
+      // Index synchronously so it's immediately searchable, then also enqueue for reliability
+      const fresh = await this.repo.findById(id)
+      if (fresh) {
+        const doc = this.buildESDoc(fresh)
+        await this.search.index('listings', id, doc as unknown as Record<string, unknown>).catch(() => {})
+      }
       await this.enqueueSearchIndex(id)
     } else {
       // Remove from ES index when paused/archived/flagged
+      await this.search.delete('listings', id).catch(() => {})
       await this.queue.enqueue(QUEUES.SEARCH_INDEXING, {
         type: 'delete-listing',
         data: { listingId: id },

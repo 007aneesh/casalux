@@ -236,19 +236,20 @@ export class ListingController {
       ...parsed.data,
       maxNights: parsed.data.maxNights ?? undefined,
     }
-    const listing = await this.service.createListing(authUser.userId, input)
+    const listing = await this.service.createListing(authUser.dbUserId, input)
     return c.json({ success: true, data: this.service.shapeListing(listing) }, 201)
   }
 
   // GET /api/v1/host/listings
   async getHostListings(c: Context) {
-    const authUser = c.get('authUser')
-    const page     = parseInt(c.req.query('page')   ?? '1',  10)
-    const limit    = parseInt(c.req.query('limit')  ?? '20', 10)
-    const status   = c.req.query('status') as ListingStatus | undefined
+    const authUser      = c.get('authUser')
+    const page          = parseInt(c.req.query('page')   ?? '1',  10)
+    const limit         = parseInt(c.req.query('limit')  ?? '20', 10)
+    const status        = c.req.query('status') as ListingStatus | undefined
+    const hostProfileId = await this.service.resolveHostProfileId(authUser.dbUserId)
 
     const { listings, total } = await sharedRepo.findMany({
-      hostId: authUser.userId,
+      hostId: hostProfileId,
       status,
       page,
       limit,
@@ -263,13 +264,14 @@ export class ListingController {
 
   // GET /api/v1/host/listings/:id
   async getHostListingById(c: Context) {
-    const authUser = c.get('authUser')
-    const id   = c.req.param('id')
+    const authUser      = c.get('authUser')
+    const id            = c.req.param('id')
+    const isAdmin       = authUser.role === 'admin' || authUser.role === 'super_admin'
+    const hostProfileId = isAdmin ? '' : await this.service.resolveHostProfileId(authUser.dbUserId)
 
-    const isAdmin = authUser.role === 'admin' || authUser.role === 'super_admin'
     const listing = isAdmin
       ? await sharedRepo.findById(id)
-      : await sharedRepo.findByIdForHost(id, authUser.userId)
+      : await sharedRepo.findByIdForHost(id, hostProfileId)
 
     if (!listing) {
       return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Listing not found' } }, 404)
@@ -291,7 +293,7 @@ export class ListingController {
 
     try {
       const isAdmin = authUser.role === 'admin' || authUser.role === 'super_admin'
-      let hostId = authUser.userId
+      let hostId = await this.service.resolveHostProfileId(authUser.dbUserId)
       if (isAdmin) {
         const existing = await sharedRepo.findById(id)
         if (!existing) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Listing not found' } }, 404)
@@ -319,7 +321,8 @@ export class ListingController {
     }
 
     try {
-      await this.service.updateStatus(id, authUser.userId, parsed.data.status as ListingStatus)
+      const hostProfileId = await this.service.resolveHostProfileId(authUser.dbUserId)
+      await this.service.updateStatus(id, hostProfileId, parsed.data.status as ListingStatus)
       return c.json({ success: true, data: { message: 'Status updated' } })
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_FOUND') {
@@ -343,7 +346,8 @@ export class ListingController {
     }
 
     try {
-      await this.service.updateAvailability(id, authUser.userId, parsed.data.rules)
+      const hostProfileId = await this.service.resolveHostProfileId(authUser.dbUserId)
+      await this.service.updateAvailability(id, hostProfileId, parsed.data.rules)
       return c.json({ success: true, data: { message: 'Availability updated' } })
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_FOUND') {

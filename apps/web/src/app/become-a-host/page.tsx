@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs'
+import { useAuthedRequest } from '@/lib/hooks/useAuthedRequest'
 import { Home, TrendingUp, Shield, Star, ChevronRight, Check } from 'lucide-react'
 import Link from 'next/link'
 
@@ -37,18 +38,51 @@ const STEPS = [
 ]
 
 export default function BecomeAHostPage() {
-  const router = useRouter()
+  const router        = useRouter()
   const { user, isLoaded } = useUser()
+  const authedRequest = useAuthedRequest()
 
-  const role = user?.publicMetadata?.role as string | undefined
-  const isHost = role === 'host' || role === 'admin'
+  // 'loading' = Clerk not ready OR status fetch in-flight.
+  // We never render a CTA until we know the real state — eliminates the flash.
+  const [appStatus, setAppStatus] = useState<'loading' | 'idle' | 'submitted' | 'rejected'>('loading')
 
-  // Already a host — go straight to dashboard
+  const role   = user?.publicMetadata?.role as string | undefined
+  const isHost = role === 'host' || role === 'admin' || role === 'super_admin'
+
   useEffect(() => {
-    if (isLoaded && isHost) {
+    // Wait for Clerk to finish loading
+    if (!isLoaded) return
+
+    // Already a host → redirect, don't set any status
+    if (isHost) {
       router.replace('/host/dashboard')
+      return
     }
-  }, [isLoaded, isHost, router])
+
+    // Not logged in → show sign-in / sign-up buttons immediately
+    if (!user) {
+      setAppStatus('idle')
+      return
+    }
+
+    // Logged-in non-host → fetch application status, then redirect appropriately
+    let cancelled = false
+    authedRequest<{ status: string }>('/host/onboarding/status', { method: 'GET' })
+      .then((res: any) => {
+        if (cancelled) return
+        const status: string = res?.data?.status ?? res?.status ?? 'none'
+        // Submitted or rejected → dedicated pending page (no more inline UI)
+        if (status === 'submitted' || status === 'rejected') {
+          router.replace('/host/application-pending')
+        } else {
+          setAppStatus('idle')
+        }
+      })
+      .catch(() => { if (!cancelled) setAppStatus('idle') })
+
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isHost, user])
 
   return (
     <div className="min-h-screen">
@@ -68,7 +102,10 @@ export default function BecomeAHostPage() {
               Join thousands of hosts earning on CasaLux. Our tools make it simple to list, manage, and grow your rental income.
             </p>
 
-            {!isLoaded ? null : !user ? (
+            {appStatus === 'loading' ? (
+              // Skeleton — hides CTA until we know the real state (prevents flash)
+              <div className="h-12 w-52 rounded-xl bg-white/10 animate-pulse" />
+            ) : !user ? (
               // Not logged in — sign up to start
               <div className="flex flex-col sm:flex-row gap-3">
                 <SignUpButton mode="modal" fallbackRedirectUrl="/host/onboarding">
@@ -84,7 +121,8 @@ export default function BecomeAHostPage() {
                 </SignInButton>
               </div>
             ) : (
-              // Logged in, not a host yet — go to onboarding
+              // Logged in, no active application — go to onboarding
+              // (submitted/rejected users are redirected to /host/application-pending)
               <Link
                 href="/host/onboarding"
                 className="inline-flex items-center gap-2 bg-gold text-white px-8 py-3.5 rounded-xl font-semibold text-sm hover:bg-gold/90 transition-colors"
@@ -155,25 +193,29 @@ export default function BecomeAHostPage() {
 
       {/* Final CTA */}
       <section className="mx-auto max-w-screen-xl px-4 sm:px-6 py-16 text-center">
-        <h2 className="font-display text-3xl font-semibold text-foreground mb-4">Ready to start hosting?</h2>
-        <p className="text-muted text-sm mb-8 max-w-sm mx-auto">
-          The setup takes less than 10 minutes. Your listing goes live as soon as you publish.
-        </p>
-        {!isLoaded ? null : !user ? (
-          <SignUpButton mode="modal" fallbackRedirectUrl="/host/onboarding">
-            <button className="bg-navy text-white px-10 py-4 rounded-xl font-semibold text-sm hover:bg-navy/90 transition-colors">
-              Create your host account
-            </button>
-          </SignUpButton>
-        ) : (
-          <Link
-            href="/host/onboarding"
-            className="inline-flex items-center gap-2 bg-navy text-white px-10 py-4 rounded-xl font-semibold text-sm hover:bg-navy/90 transition-colors"
-          >
-            Continue to setup
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        )}
+        <>
+          <h2 className="font-display text-3xl font-semibold text-foreground mb-4">Ready to start hosting?</h2>
+          <p className="text-muted text-sm mb-8 max-w-sm mx-auto">
+            The setup takes less than 10 minutes. Your listing goes live as soon as you publish.
+          </p>
+          {appStatus === 'loading' ? (
+            <div className="h-14 w-48 rounded-xl bg-gray-100 animate-pulse mx-auto" />
+          ) : !user ? (
+            <SignUpButton mode="modal" fallbackRedirectUrl="/host/onboarding">
+              <button className="bg-navy text-white px-10 py-4 rounded-xl font-semibold text-sm hover:bg-navy/90 transition-colors">
+                Create your host account
+              </button>
+            </SignUpButton>
+          ) : (
+            <Link
+              href="/host/onboarding"
+              className="inline-flex items-center gap-2 bg-navy text-white px-10 py-4 rounded-xl font-semibold text-sm hover:bg-navy/90 transition-colors"
+            >
+              Continue to setup
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          )}
+        </>
       </section>
     </div>
   )

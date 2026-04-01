@@ -113,6 +113,31 @@ uploadsRouter.post('/confirm', async (c) => {
     },
   })
 
+  // Sync image into listing.images JSON column so shapeListing / the host
+  // listings page sees it immediately without a separate mediaAssets join.
+  if (entityType === 'listing' && resourceType === 'image') {
+    const listing = await db.listing.findUnique({
+      where:  { id: entityId },
+      select: { images: true },
+    })
+
+    if (listing) {
+      const existing = (listing.images ?? []) as Array<Record<string, unknown>>
+      const newImage = {
+        publicId,
+        url:       secureUrl ?? url,
+        width:     width  ?? 0,
+        height:    height ?? 0,
+        isPrimary: isPrimary ?? existing.length === 0, // first image is always cover
+        order:     order ?? existing.length,
+      }
+      await db.listing.update({
+        where: { id: entityId },
+        data:  { images: [...existing, newImage] },
+      })
+    }
+  }
+
   // Enqueue thumbnail generation for images
   if (resourceType === 'image') {
     await queueService.enqueue(QUEUES.MEDIA_PROCESSING, {

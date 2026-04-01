@@ -285,10 +285,18 @@ export default function OnboardingWizardPage({ params }: { params: { sessionId: 
     setSaving(true)
     setError(null)
     try {
-      await authedRequest(`/host/onboarding/${sessionId}/submit`, { method: 'POST' })
-      // Reload Clerk session so publicMetadata.role = 'host' is reflected
-      await session?.reload()
-      router.replace('/host/dashboard')
+      const res = await authedRequest<{ status: string }>(`/host/onboarding/${sessionId}/submit`, { method: 'POST' }) as any
+      const status: string = res?.data?.status ?? res?.status ?? ''
+
+      if (status === 'auto_approved' || status === 'approved') {
+        // Role was promoted in Clerk — reload session so JWT reflects new role,
+        // then hard-navigate so Next.js middleware sees the fresh claim.
+        await session?.reload()
+        window.location.href = '/host/dashboard'
+      } else {
+        // Queued for admin review — send to the dedicated pending page.
+        router.replace('/host/application-pending')
+      }
     } catch (e: any) {
       setError(e?.message ?? 'Submission failed. Please try again.')
       setSaving(false)

@@ -29,6 +29,7 @@ import { ListingService }       from '../services/listing.service.js'
 import { ListingController }    from '../controllers/listing.controller.js'
 import { OnboardingService }    from '../services/onboarding.service.js'
 import { OnboardingController } from '../controllers/onboarding.controller.js'
+import { HostController }       from '../controllers/host.controller.js'
 import { bookingController }    from './bookings.js'
 import { cacheService, searchService, queueService } from '../container.js'
 
@@ -38,10 +39,15 @@ const controller = new ListingController(service)
 const onboardingService    = new OnboardingService(queueService)
 const onboardingController = new OnboardingController(onboardingService)
 
+const hostController = new HostController()
+
 export const hostRouter = new Hono()
 
 // ─── Protected routes (require auth + host role) ─────────────────────────────
 hostRouter.use('*', requireAuth(), requireRole('host'))
+
+// ─── Dashboard stats ──────────────────────────────────────────────────────────
+hostRouter.get('/stats', (c) => hostController.getStats(c))
 
 // ─── Listing management ───────────────────────────────────────────────────────
 hostRouter.post('/listings',                          (c) => controller.createListing(c))
@@ -68,6 +74,8 @@ hostRouter.post('/booking-requests/:id/decline',     (c) => bookingController.de
 // Only requireAuth() — the user becomes a host AFTER completing onboarding.
 // Inline middleware per route because path-wildcard use() doesn't compose
 // reliably in Hono v4 sub-routers.
+// /status must be before /:sessionId to avoid param collision
+hostRouter.get(   '/onboarding/status',                       requireAuth(), (c) => onboardingController.getMyStatus(c))
 hostRouter.post(  '/onboarding/start',                        requireAuth(), (c) => onboardingController.start(c))
 hostRouter.get(   '/onboarding/:sessionId',                   requireAuth(), (c) => onboardingController.getSession(c))
 hostRouter.patch( '/onboarding/:sessionId/space',             requireAuth(), (c) => onboardingController.saveSpace(c))

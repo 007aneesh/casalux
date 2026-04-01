@@ -11,6 +11,7 @@
 import { createClerkClient } from '@clerk/backend'
 import type { QueueService } from '@casalux/services-queue'
 import { QUEUES } from '@casalux/services-queue'
+import { db } from '@casalux/db'
 import { OnboardingRepository } from '../repositories/onboarding.repository.js'
 import type { OnboardingSessionData } from '../repositories/onboarding.repository.js'
 
@@ -48,11 +49,28 @@ export class OnboardingService {
 
   /** Step 1 — POST /host/onboarding/start */
   async start(clerkId: string) {
+    // Check for any non-rejected, non-in_progress application first
+    const latest = await this.repo.findLatestByUser(clerkId)
+    if (latest && latest.status === 'submitted') throw new Error('APPLICATION_UNDER_REVIEW')
+    if (latest && (latest.status === 'approved' || latest.status === 'auto_approved')) throw new Error('APPLICATION_ALREADY_APPROVED')
+
     // Resume existing in-progress session rather than create duplicate
     const existing = await this.repo.findActiveByUser(clerkId)
     if (existing) return existing
 
     return this.repo.create(clerkId)
+  }
+
+  /** GET /host/onboarding/status — user's latest application status */
+  async getMyStatus(clerkId: string) {
+    const latest = await this.repo.findLatestByUser(clerkId)
+    if (!latest) return { status: 'none' as const, sessionId: null, submittedAt: null, rejectionReason: null }
+    return {
+      status:          latest.status,
+      sessionId:       latest.id,
+      submittedAt:     latest.submittedAt,
+      rejectionReason: latest.rejectionReason ?? null,
+    }
   }
 
   /** GET /host/onboarding/:sessionId — check current progress */
@@ -121,7 +139,7 @@ export class OnboardingService {
 
     if (AUTO_APPROVE) {
       await this.repo.autoApprove(sessionId)
-      await this.grantHostRole(clerkId)
+      await this.grantHostRoleAndProfile(clerkId)
       await this.queue.enqueue(QUEUES.EMAIL, {
         type: 'host.auto_approved',
         data: { clerkId, sessionId },
@@ -146,16 +164,14 @@ export class OnboardingService {
 
     await this.repo.approve(sessionId, reviewerClerkId)
 
-    // Upgrade Clerk role to host
-    const application = await this.repo.findById(sessionId)
-    if (application) {
-      const userRecord = await this.clerk.users.getUser(
-        (application as unknown as { userId: string }).userId
-      ).catch(() => null)
-
-      if (userRecord) {
-        await this.grantHostRole(userRecord.id)
-      }
+    // session.userId is the DB User.id (CUID) — look up clerkId from DB,
+    // then grant the host role in Clerk and ensure HostProfile exists.
+    const dbUser = await db.user.findUnique({
+      where:  { id: (session as any).userId },
+      select: { clerkId: true },
+    })
+    if (dbUser?.clerkId) {
+      await this.grantHostRoleAndProfile(dbUser.clerkId)
     }
 
     await this.queue.enqueue(QUEUES.EMAIL, {
@@ -187,9 +203,24 @@ export class OnboardingService {
 
   // ── Private helpers ─────────────────────────────────────────────────────────
 
-  private async grantHostRole(clerkId: string) {
+  /** Promote Clerk role to 'host' AND ensure the HostProfile DB record exists. */
+  private async grantHostRoleAndProfile(clerkId: string) {
+    // 1. Update Clerk publicMetadata so the JWT role reflects 'host'
     await this.clerk.users.updateUserMetadata(clerkId, {
       publicMetadata: { role: 'host' },
     })
+
+    // 2. Ensure HostProfile exists — upsert is safe if already created
+    const dbUser = await db.user.findUnique({
+      where:  { clerkId },
+      select: { id: true },
+    })
+    if (dbUser) {
+      await db.hostProfile.upsert({
+        where:  { userId: dbUser.id },
+        update: {},
+        create: { userId: dbUser.id },
+      })
+    }
   }
 }

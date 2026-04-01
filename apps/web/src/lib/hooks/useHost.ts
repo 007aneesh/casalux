@@ -4,14 +4,17 @@ import { useAuth } from '@clerk/nextjs'
 import { useAuthedRequest } from './useAuthedRequest'
 
 export interface HostStats {
-  totalListings: number
-  activeListings: number
-  totalBookings: number
-  pendingRequests: number
-  totalEarnings: number
+  activeListings:    number
+  totalListings:     number
+  pendingRequests:   number
+  confirmedBookings: number
+  upcomingCheckIns:  number
   thisMonthEarnings: number
-  avgRating: number
-  reviewCount: number
+  allTimeEarnings:   number
+  totalBookings:     number
+  totalEarnings:     number
+  avgRating:         number
+  reviewCount:       number
 }
 
 export interface HostListing {
@@ -108,7 +111,7 @@ export function useHostActions() {
   async function toggleListingStatus(listingId: string, active: boolean) {
     await authedRequest(`/host/listings/${listingId}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status: active ? 'active' : 'inactive' }),
+      body: JSON.stringify({ status: active ? 'active' : 'paused' }),
     })
     mutate('/host/listings')
     mutate('/host/stats')

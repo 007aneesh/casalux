@@ -12,6 +12,8 @@ const isAuthRequired = createRouteMatcher([
 ])
 
 // Host or admin role required — non-hosts get redirected to /become-a-host
+// Note: /host/onboarding and /host/application-pending are intentionally excluded
+// (accessible before the role is promoted to 'host')
 const isHostRoute = createRouteMatcher([
   '/host/dashboard(.*)',
   '/host/listings(.*)',

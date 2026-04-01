@@ -43,7 +43,7 @@ export function requireAuth(): MiddlewareHandler {
 
       // Sync to local DB — ensures every Clerk user has a DB row.
       // update: keeps profile fields fresh; create: bootstraps new sign-ups.
-      await db.user.upsert({
+      const dbUser = await db.user.upsert({
         where:  { clerkId: userId },
         update: {
           email,
@@ -64,8 +64,9 @@ export function requireAuth(): MiddlewareHandler {
 
       c.set('authUser', {
         userId,
-        clerkId: userId,
-        role: role as import('./types.js').AuthUser['role'],
+        clerkId:  userId,
+        dbUserId: dbUser.id,
+        role:     role as import('./types.js').AuthUser['role'],
         email,
       })
 

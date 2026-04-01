@@ -5,6 +5,7 @@
  */
 import type { Context } from 'hono'
 import { z } from 'zod'
+import { db } from '@casalux/db'
 import type { BookingStatus, BookingRequestStatus, DeclineReason } from '@casalux/db'
 import type { BookingService } from '../services/booking.service.js'
 
@@ -106,19 +107,28 @@ export class BookingController {
 
   // GET /api/v1/users/me/bookings
   async getMyBookings(c: Context) {
-    const authUser = c.get('authUser')
-    const parsed   = paginationSchema.safeParse(Object.fromEntries(new URLSearchParams(c.req.url.split('?')[1] ?? '')))
+    try {
+      const authUser = c.get('authUser')
+      const parsed   = paginationSchema.safeParse({
+        page:   c.req.query('page'),
+        limit:  c.req.query('limit'),
+        status: c.req.query('status'),
+      })
 
-    const page   = parsed.data?.page  ?? 1
-    const limit  = parsed.data?.limit ?? 20
-    const status = parsed.data?.status as BookingStatus | undefined
+      const page   = parsed.data?.page  ?? 1
+      const limit  = parsed.data?.limit ?? 20
+      const status = parsed.data?.status as BookingStatus | undefined
 
-    const result = await this.service.getGuestBookings(authUser.userId, { status, page, limit })
-    return c.json({
-      success: true,
-      data:    result.data,
-      meta:    { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
-    })
+      const result = await this.service.getGuestBookings(authUser.userId, { status, page, limit })
+      return c.json({
+        success: true,
+        data:    result.data,
+        meta:    { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
+      })
+    } catch (err) {
+      console.error('[BookingController.getMyBookings]', err)
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch bookings' } }, 500)
+    }
   }
 
   // GET /api/v1/bookings/:id/cancellation-preview
@@ -245,43 +255,69 @@ export class BookingController {
 
   // GET /api/v1/host/bookings
   async getHostBookings(c: Context) {
-    const authUser = c.get('authUser')
-    const parsed   = paginationSchema.safeParse(Object.fromEntries(new URLSearchParams(c.req.url.split('?')[1] ?? '')))
+    try {
+      const authUser      = c.get('authUser')
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
 
-    const page   = parsed.data?.page  ?? 1
-    const limit  = parsed.data?.limit ?? 20
-    const status = parsed.data?.status as BookingStatus | undefined
+      const parsed = paginationSchema.safeParse({
+        page:   c.req.query('page'),
+        limit:  c.req.query('limit'),
+        status: c.req.query('status'),
+      })
+      const page   = parsed.data?.page  ?? 1
+      const limit  = parsed.data?.limit ?? 20
+      const status = parsed.data?.status as BookingStatus | undefined
 
-    const result = await this.service.getHostBookings(authUser.userId, { status, page, limit })
-    return c.json({
-      success: true,
-      data:    result.data,
-      meta:    { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
-    })
+      const result = await this.service.getHostBookings(hostProfileId, { status, page, limit })
+      return c.json({
+        success: true,
+        data:    result.data,
+        meta:    { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
+      })
+    } catch (err) {
+      console.error('[BookingController.getHostBookings]', err)
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch bookings' } }, 500)
+    }
   }
 
   // GET /api/v1/host/bookings/:id
   async getHostBookingById(c: Context) {
-    const authUser = c.get('authUser')
-    const id       = c.req.param('id') as string
+    try {
+      const authUser      = c.get('authUser')
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
 
-    const booking = await this.service.getBookingById(id, authUser.userId, authUser.role)
-    if (!booking) {
-      return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404)
+      const id      = c.req.param('id') as string
+      // Service has no getHostBookingById — use getBookingById with host role
+      const booking = await this.service.getBookingById(id, hostProfileId, 'host')
+      if (!booking) {
+        return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404)
+      }
+      return c.json({ success: true, data: booking })
+    } catch (err) {
+      console.error('[BookingController.getHostBookingById]', err)
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch booking' } }, 500)
     }
-
-    return c.json({ success: true, data: booking })
   }
 
   // POST /api/v1/host/bookings/:id/cancel
   async cancelBookingAsHost(c: Context) {
-    const authUser = c.get('authUser')
-    const id       = c.req.param('id') as string
-    const body     = await c.req.json().catch(() => ({}))
-    const parsed   = cancelBookingSchema.safeParse(body)
-
     try {
-      const result = await this.service.cancelBookingAsHost(id, authUser.userId, parsed.data?.reason)
+      const authUser      = c.get('authUser')
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
+
+      const id     = c.req.param('id') as string
+      const body   = await c.req.json().catch(() => ({}))
+      const parsed = cancelBookingSchema.safeParse(body)
+      const result = await this.service.cancelBookingAsHost(id, hostProfileId, parsed.data?.reason)
       return c.json({ success: true, data: result })
     } catch (err) {
       return this.handleBookingError(c, err)
@@ -292,35 +328,60 @@ export class BookingController {
 
   // GET /api/v1/host/booking-requests
   async getHostRequests(c: Context) {
-    const authUser = c.get('authUser')
-    const parsed   = paginationSchema.safeParse(Object.fromEntries(new URLSearchParams(c.req.url.split('?')[1] ?? '')))
+    try {
+      const authUser      = c.get('authUser')
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
 
-    const page   = parsed.data?.page  ?? 1
-    const limit  = parsed.data?.limit ?? 20
-    const status = parsed.data?.status as BookingRequestStatus | undefined
+      const parsed = paginationSchema.safeParse({
+        page:   c.req.query('page'),
+        limit:  c.req.query('limit'),
+        status: c.req.query('status'),
+      })
+      const page   = parsed.data?.page  ?? 1
+      const limit  = parsed.data?.limit ?? 20
+      const status = parsed.data?.status as BookingRequestStatus | undefined
 
-    const result = await this.service.getHostRequests(authUser.userId, { status, page, limit })
-    return c.json({
-      success: true,
-      data:    result.data,
-      meta:    { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
-    })
+      const result = await this.service.getHostRequests(hostProfileId, { status, page, limit })
+      return c.json({
+        success: true,
+        data:    result.data,
+        meta:    { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
+      })
+    } catch (err) {
+      console.error('[BookingController.getHostRequests]', err)
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch booking requests' } }, 500)
+    }
   }
 
   // GET /api/v1/host/booking-requests/pending
   async getPendingRequests(c: Context) {
-    const authUser = c.get('authUser')
-    const parsed   = paginationSchema.safeParse(Object.fromEntries(new URLSearchParams(c.req.url.split('?')[1] ?? '')))
+    try {
+      const authUser      = c.get('authUser')
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
 
-    const page  = parsed.data?.page  ?? 1
-    const limit = parsed.data?.limit ?? 20
+      const parsed = paginationSchema.safeParse({
+        page:  c.req.query('page'),
+        limit: c.req.query('limit'),
+      })
+      const page  = parsed.data?.page  ?? 1
+      const limit = parsed.data?.limit ?? 20
 
-    const result = await this.service.getHostRequests(authUser.userId, { page, limit, pendingOnly: true })
-    return c.json({
-      success: true,
-      data:    result.data,
-      meta:    { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
-    })
+      const result = await this.service.getHostRequests(hostProfileId, { page, limit, pendingOnly: true })
+      return c.json({
+        success: true,
+        data:    result.data,
+        meta:    { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
+      })
+    } catch (err) {
+      console.error('[BookingController.getPendingRequests]', err)
+      return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch pending requests' } }, 500)
+    }
   }
 
   // POST /api/v1/host/booking-requests/:id/approve
@@ -331,7 +392,11 @@ export class BookingController {
     const parsed   = approveRequestSchema.safeParse(body)
 
     try {
-      const result = await this.service.approveBookingRequest(id, authUser.userId, parsed.data?.hostMessage)
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
+      const result = await this.service.approveBookingRequest(id, hostProfileId, parsed.data?.hostMessage)
       return c.json({ success: true, data: result })
     } catch (err) {
       return this.handleBookingError(c, err)
@@ -350,7 +415,11 @@ export class BookingController {
     }
 
     try {
-      const result = await this.service.declineBookingRequest(id, authUser.userId, {
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
+      const result = await this.service.declineBookingRequest(id, hostProfileId, {
         declineReason: parsed.data.declineReason as DeclineReason,
         hostMessage:   parsed.data.hostMessage,
       })
@@ -371,10 +440,35 @@ export class BookingController {
     }
 
     try {
-      const result = await this.service.createPreApproval(authUser.userId, parsed.data)
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
+      const result = await this.service.createPreApproval(hostProfileId, parsed.data)
       return c.json({ success: true, data: result }, 201)
     } catch (err) {
       return this.handleBookingError(c, err)
+    }
+  }
+
+  // ─── Private helpers ──────────────────────────────────────────────────────
+
+  /**
+   * Resolve HostProfile.id from the authenticated user's DB User.id (CUID).
+   * Uses upsert so hosts who reached approval before the profile-creation fix
+   * get a profile created on first access, instead of hard-failing with 404.
+   */
+  private async resolveHostProfileId(dbUserId: string): Promise<string | null> {
+    try {
+      const hp = await db.hostProfile.upsert({
+        where:  { userId: dbUserId },
+        update: {},
+        create: { userId: dbUserId },
+        select: { id: true },
+      })
+      return hp.id
+    } catch {
+      return null
     }
   }
 

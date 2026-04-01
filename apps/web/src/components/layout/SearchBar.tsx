@@ -171,7 +171,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
           </button>
 
           <button
-            onClick={handleSearch}
+            onClick={() => handleSearch()}
             className="flex items-center gap-2 bg-navy text-white rounded-xl px-5 py-3 text-sm font-medium hover:bg-navy-800 transition-colors shadow-sm"
           >
             <Search className="h-4 w-4" />

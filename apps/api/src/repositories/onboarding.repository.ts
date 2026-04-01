@@ -64,6 +64,15 @@ export class OnboardingRepository {
     })
   }
 
+  /** Returns the most recent application regardless of status — used for status checks */
+  async findLatestByUser(clerkId: string) {
+    return prisma.hostApplication.findFirst({
+      where:   { user: { clerkId } },
+      orderBy: { createdAt: 'desc' },
+      select:  { id: true, status: true, submittedAt: true, rejectionReason: true, createdAt: true },
+    })
+  }
+
   async findByIdForUser(sessionId: string, clerkId: string) {
     return prisma.hostApplication.findFirst({
       where: {

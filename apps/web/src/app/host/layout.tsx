@@ -71,20 +71,38 @@ export default function HostLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname()
   const { user, isLoaded } = useUser()
 
-  const isOnboardingRoute = pathname.startsWith('/host/onboarding')
+  const isOnboardingRoute      = pathname.startsWith('/host/onboarding')
+  const isApplicationPending   = pathname === '/host/application-pending'
+  const isUnguardedHostRoute   = isOnboardingRoute || isApplicationPending
 
   // Client-side guard: non-hosts hitting dashboard/listings/etc get redirected
   useEffect(() => {
-    if (!isLoaded || isOnboardingRoute) return
+    if (!isLoaded || isUnguardedHostRoute) return
     const role = user?.publicMetadata?.role as string | undefined
     if (user && role !== 'host' && role !== 'admin') {
       router.replace('/become-a-host')
     }
   }, [isLoaded, user, router, isOnboardingRoute])
 
-  // Onboarding routes use a plain layout (no sidebar)
-  if (isOnboardingRoute) {
+  // Onboarding + application-pending use a plain layout (no sidebar, no role guard)
+  if (isUnguardedHostRoute) {
     return <>{children}</>
+  }
+
+  // Don't render any host UI until Clerk confirms the role.
+  // Prevents a flash of dashboard content before the redirect fires.
+  if (!isLoaded) {
+    return (
+      <div className="flex min-h-screen bg-gray-50 items-center justify-center">
+        <div className="h-10 w-10 rounded-xl bg-navy/10 animate-pulse" />
+      </div>
+    )
+  }
+
+  const role = user?.publicMetadata?.role as string | undefined
+  if (!user || (role !== 'host' && role !== 'admin' && role !== 'super_admin')) {
+    // Redirect is already fired in the effect above; render nothing while navigating
+    return null
   }
 
   return (
