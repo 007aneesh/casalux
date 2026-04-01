@@ -20,7 +20,13 @@ export function AvailabilityCalendar({
   onRangeChange,
   inline = false,
 }: AvailabilityCalendarProps) {
-  const { availability, isLoading } = useAvailability(listingId)
+  const now = new Date()
+  const [displayMonth, setDisplayMonth] = useState(now)
+  const { availability, isLoading } = useAvailability(
+    listingId,
+    displayMonth.getFullYear(),
+    displayMonth.getMonth() + 1
+  )
   const [range, setRange] = useState<DateRange | undefined>()
   const today = startOfToday()
 
@@ -48,6 +54,7 @@ export function AvailabilityCalendar({
           mode="range"
           selected={range}
           onSelect={setRange}
+          onMonthChange={setDisplayMonth}
           disabled={isDisabled}
           numberOfMonths={inline ? 1 : 2}
           fromDate={today}

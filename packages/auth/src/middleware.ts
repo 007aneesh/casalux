@@ -42,25 +42,30 @@ export function requireAuth(): MiddlewareHandler {
       const email = clerkUser.emailAddresses[0]?.emailAddress ?? ''
 
       // Sync to local DB — ensures every Clerk user has a DB row.
-      // update: keeps profile fields fresh; create: bootstraps new sign-ups.
-      const dbUser = await db.user.upsert({
-        where:  { clerkId: userId },
-        update: {
-          email,
-          firstName:       clerkUser.firstName ?? '',
-          lastName:        clerkUser.lastName  ?? '',
-          profileImageUrl: clerkUser.imageUrl  ?? null,
-          role:            role as any,
-        },
-        create: {
-          clerkId:         userId,
-          email,
-          firstName:       clerkUser.firstName ?? '',
-          lastName:        clerkUser.lastName  ?? '',
-          profileImageUrl: clerkUser.imageUrl  ?? null,
-          role:            (role as any) ?? 'guest',
-        },
-      })
+      // We upsert by clerkId first. If a row already exists with the same email
+      // but a different clerkId (e.g. seeded/migrated user), we find it by email
+      // and stamp the correct clerkId onto it before proceeding.
+      const profileFields = {
+        email,
+        firstName:       clerkUser.firstName ?? '',
+        lastName:        clerkUser.lastName  ?? '',
+        profileImageUrl: clerkUser.imageUrl  ?? null,
+        role:            role as any,
+      }
+
+      let dbUser = await db.user.findUnique({ where: { clerkId: userId } })
+
+      if (dbUser) {
+        dbUser = await db.user.update({ where: { clerkId: userId }, data: profileFields })
+      } else {
+        // Might already exist under this email with a different / missing clerkId
+        const existing = await db.user.findUnique({ where: { email } })
+        if (existing) {
+          dbUser = await db.user.update({ where: { email }, data: { ...profileFields, clerkId: userId } })
+        } else {
+          dbUser = await db.user.create({ data: { clerkId: userId, ...profileFields } })
+        }
+      }
 
       c.set('authUser', {
         userId,
@@ -71,7 +76,8 @@ export function requireAuth(): MiddlewareHandler {
       })
 
       await next()
-    } catch {
+    } catch (err) {
+      console.error('[requireAuth] verifyToken failed:', err)
       return c.json(
         { success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' } },
         401

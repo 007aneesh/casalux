@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useMyBookings } from '@/lib/hooks/useBooking'
+import { useMyBookings, useBookingRequests } from '@/lib/hooks/useBooking'
 import { Skeleton } from '@casalux/ui'
 import { formatDateShort, formatPrice } from '@/lib/utils'
 import { Calendar, MapPin, Clock, CheckCircle2, XCircle, AlertCircle, ChevronRight } from 'lucide-react'
@@ -33,9 +33,9 @@ function BookingCard({ booking }: { booking: any }) {
       <div className="flex gap-4 p-4 rounded-2xl border border-gray-100 bg-white shadow-card hover:shadow-card-hover transition-all duration-200">
         {/* Thumbnail */}
         <div className="relative w-28 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
-          {booking.listing?.images?.[0] ? (
+          {booking.listing?.images?.[0]?.url ? (
             <Image
-              src={booking.listing.images[0]}
+              src={booking.listing.images[0].url}
               alt={booking.listing.title ?? 'Property'}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -55,7 +55,7 @@ function BookingCard({ booking }: { booking: any }) {
               </p>
               <p className="flex items-center gap-1 text-xs text-muted mt-0.5">
                 <MapPin size={11} />
-                <span className="truncate">{booking.listing?.location?.city ?? '—'}</span>
+                <span className="truncate">{booking.listing?.address?.city ?? '—'}</span>
               </p>
             </div>
             <span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0 ${status.className}`}>
@@ -101,10 +101,23 @@ function BookingCardSkeleton() {
 
 export default function BookingsPage() {
   const [tab, setTab] = useState<BookingTab>('upcoming')
-  const { bookings, isLoading, error } = useMyBookings()
+  const { bookings, isLoading: bookingsLoading, error: bookingsError } = useMyBookings()
+  const { requests, isLoading: requestsLoading, error: requestsError } = useBookingRequests()
+
+  const isLoading = bookingsLoading || requestsLoading
+  const error = bookingsError || requestsError
+
+  // Normalize booking requests to match Booking shape for the card
+  const normalizedRequests = (requests ?? []).map((r: any) => ({
+    ...r,
+    status: r.status === 'pending' ? 'pending_host_approval' : r.status,
+    totalAmount: r.priceSnapshot?.total ?? 0,
+  }))
+
+  const all = [...(bookings ?? []), ...normalizedRequests]
 
   const now = new Date()
-  const filtered = (bookings ?? []).filter((b: any) => {
+  const filtered = all.filter((b: any) => {
     const checkOut = new Date(b.checkOut)
     if (tab === 'upcoming') return checkOut >= now && b.status !== 'cancelled' && b.status !== 'declined'
     if (tab === 'past') return checkOut < now && b.status !== 'cancelled'

@@ -201,15 +201,28 @@ export class ListingRepository {
     from: Date,
     to: Date
   ): Promise<Array<{ checkIn: Date; checkOut: Date }>> {
-    return db.booking.findMany({
-      where: {
-        listingId,
-        status:   { in: ['confirmed', 'host_approved', 'pending_payment'] },
-        checkIn:  { lte: to },
-        checkOut: { gte: from },
-      },
-      select: { checkIn: true, checkOut: true },
-    })
+    const [bookings, approvedRequests] = await Promise.all([
+      db.booking.findMany({
+        where: {
+          listingId,
+          status:   { in: ['confirmed', 'host_approved', 'pending_payment'] },
+          checkIn:  { lte: to },
+          checkOut: { gte: from },
+        },
+        select: { checkIn: true, checkOut: true },
+      }),
+      // Also block dates for approved requests awaiting payment
+      db.bookingRequest.findMany({
+        where: {
+          listingId,
+          status:   'approved',
+          checkIn:  { lte: to },
+          checkOut: { gte: from },
+        },
+        select: { checkIn: true, checkOut: true },
+      }),
+    ])
+    return [...bookings, ...approvedRequests]
   }
 
   // ─── Reviews ──────────────────────────────────────────────────────────────

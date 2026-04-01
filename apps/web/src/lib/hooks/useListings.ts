@@ -63,9 +63,13 @@ export function useQuickFilters() {
 
 // ---------- Availability ----------
 
-export function useAvailability(listingId: string | null) {
+export function useAvailability(
+  listingId: string | null,
+  year = new Date().getFullYear(),
+  month = new Date().getMonth() + 1
+) {
   const { data, isLoading, error } = useSWR(
-    listingId ? `/listings/${listingId}/availability` : null,
+    listingId ? `/listings/${listingId}/availability?year=${year}&month=${month}` : null,
     (path: string) => apiRequest<AvailabilityCalendar>(path)
   )
   return { availability: data?.data, isLoading, error }

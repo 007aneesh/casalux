@@ -18,7 +18,7 @@ const BOOKING_INCLUDE = {
       cancellationPolicy: true,
       checkInTime: true,
       checkOutTime: true,
-      images: { select: { url: true, isPrimary: true }, take: 1 },
+      images: true,
     },
   },
   guest: {
@@ -41,7 +41,7 @@ const BOOKING_REQUEST_INCLUDE = {
       checkInTime: true,
       checkOutTime: true,
       instantBook: true,
-      images: { select: { url: true, isPrimary: true }, take: 1 },
+      images: true,
     },
   },
   guest: {
@@ -104,6 +104,13 @@ export class BookingRepository {
   async findBookingById(id: string) {
     return db.booking.findUnique({
       where:   { id },
+      include: BOOKING_INCLUDE,
+    })
+  }
+
+  async findBookingByRequestId(bookingRequestId: string) {
+    return db.booking.findFirst({
+      where:   { bookingRequestId },
       include: BOOKING_INCLUDE,
     })
   }

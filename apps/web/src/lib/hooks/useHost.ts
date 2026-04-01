@@ -99,10 +99,10 @@ export function useHostActions() {
     mutate('/host/stats')
   }
 
-  async function declineRequest(bookingId: string, reason?: string) {
+  async function declineRequest(bookingId: string, declineReason: string, hostMessage?: string) {
     await authedRequest(`/host/booking-requests/${bookingId}/decline`, {
       method: 'POST',
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify({ declineReason, hostMessage: hostMessage || undefined }),
     })
     mutate('/host/booking-requests')
     mutate('/host/stats')

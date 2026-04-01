@@ -12,7 +12,7 @@ import type { BookingService } from '../services/booking.service.js'
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
 
 const initiateBookingSchema = z.object({
-  listingId:          z.string().uuid(),
+  listingId:          z.string().cuid(),
   checkIn:            z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkOut:           z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   guests:             z.number().int().min(1),
@@ -25,7 +25,7 @@ const cancelBookingSchema = z.object({
 })
 
 const createRequestSchema = z.object({
-  listingId:    z.string().uuid(),
+  listingId:    z.string().cuid(),
   checkIn:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkOut:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   guests:       z.number().int().min(1),
@@ -42,8 +42,8 @@ const declineRequestSchema = z.object({
 })
 
 const preApproveSchema = z.object({
-  guestId:   z.string(),
-  listingId: z.string().uuid(),
+  guestId:   z.string().cuid(),
+  listingId: z.string().cuid(),
   checkIn:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkOut:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   message:   z.string().max(1000).optional(),

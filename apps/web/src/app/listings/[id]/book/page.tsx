@@ -10,7 +10,7 @@ import { format, differenceInCalendarDays, parseISO } from 'date-fns'
 import { Button, Separator } from '@casalux/ui'
 import { PriceBreakdown } from '@/components/booking/PriceBreakdown'
 import { useListing, usePricingPreview } from '@/lib/hooks/useListings'
-import { apiRequest } from '@/lib/api-client'
+import { useAuthedRequest } from '@/lib/hooks/useAuthedRequest'
 import { formatPrice, pluralize } from '@/lib/utils'
 import Image from 'next/image'
 import type { InitiateBookingResponse } from '@casalux/types'
@@ -23,6 +23,7 @@ export default function BookingCheckoutPage({ params }: PageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isSignedIn, isLoaded } = useAuth()
+  const authedRequest = useAuthedRequest()
 
   const checkIn = searchParams.get('checkIn') ?? ''
   const checkOut = searchParams.get('checkOut') ?? ''
@@ -55,31 +56,46 @@ export default function BookingCheckoutPage({ params }: PageProps) {
     setError(null)
 
     try {
-      const res = await apiRequest<InitiateBookingResponse>('/bookings/initiate', {
-        method: 'POST',
-        body: JSON.stringify({
-          listingId: params.id,
-          checkIn,
-          checkOut,
-          guests,
-          promoCode: promoCode || undefined,
-          agreedToHouseRules: true,
-        }),
-      })
+      if (listing.instantBook) {
+        const res = await authedRequest<InitiateBookingResponse>('/bookings/initiate', {
+          method: 'POST',
+          body: JSON.stringify({
+            listingId: params.id,
+            checkIn,
+            checkOut,
+            guests,
+            promoCode: promoCode || undefined,
+            agreedToHouseRules: true,
+          }),
+        })
 
-      if (!res.success) {
-        setError((res as unknown as { error: { message: string } }).error?.message ?? 'Booking failed. Please try again.')
-        return
-      }
+        if (!res.success) {
+          setError((res as unknown as { error: { message: string } }).error?.message ?? 'Booking failed. Please try again.')
+          return
+        }
 
-      const { orderId, providerPayload } = res.data
-      // For Razorpay or Stripe, we get a payment URL or an order ID
-      // In production: redirect to provider checkout URL
-      // For now: redirect to confirmation polling page
-      if ((providerPayload as Record<string, unknown>).checkoutUrl) {
-        window.location.href = String((providerPayload as Record<string, unknown>).checkoutUrl)
+        if ((res.data.providerPayload as Record<string, unknown>).checkoutUrl) {
+          window.location.href = String((res.data.providerPayload as Record<string, unknown>).checkoutUrl)
+        } else {
+          router.push(`/bookings/${res.data.bookingId}/confirmation`)
+        }
       } else {
-        router.push(`/bookings/${res.data.bookingId}/confirmation`)
+        const res = await authedRequest<{ id: string }>('/booking-requests', {
+          method: 'POST',
+          body: JSON.stringify({
+            listingId: params.id,
+            checkIn,
+            checkOut,
+            guests,
+          }),
+        })
+
+        if (!res.success) {
+          setError((res as unknown as { error: { message: string } }).error?.message ?? 'Request failed. Please try again.')
+          return
+        }
+
+        router.push(`/bookings?requested=true`)
       }
     } catch {
       setError('Something went wrong. Please try again.')

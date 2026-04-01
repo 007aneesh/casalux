@@ -93,12 +93,19 @@ async function handlePaymentCaptured(payload: PaymentCapturedPayload) {
     },
   })
 
-  // Release Redis lock + delete payment session
+  // Release Redis lock + delete payment session + bust availability cache
   const checkInStr  = booking.checkIn.toISOString().slice(0, 10)
   const checkOutStr = booking.checkOut.toISOString().slice(0, 10)
+  const checkInMonth  = checkInStr.slice(0, 7)   // e.g. "2026-04"
+  const checkOutMonth = checkOutStr.slice(0, 7)
+  const monthsToClear = checkInMonth === checkOutMonth
+    ? [checkInMonth]
+    : [checkInMonth, checkOutMonth]
+
   await Promise.all([
     cacheService.del(CacheKeys.bookingLock(booking.listingId, checkInStr, checkOutStr)),
     cacheService.del(CacheKeys.paySession(payload.orderId)),
+    ...monthsToClear.map(m => cacheService.del(CacheKeys.availability(booking.listingId, m))),
   ])
 
   // Enqueue notifications + search index sync

@@ -60,6 +60,7 @@ export interface Transfer {
 export interface IPaymentService {
   createCheckoutSession(params: CheckoutParams): Promise<CheckoutSession>
   createPaymentIntent(params: PaymentIntentParams): Promise<PaymentIntent>
+  retrievePaymentIntent(intentId: string): Promise<PaymentIntent | null>
   constructWebhookEvent(payload: Buffer, signature: string): WebhookEvent
   refund(chargeId: string, amount?: number): Promise<Refund>
   createTransfer(params: TransferParams): Promise<Transfer>

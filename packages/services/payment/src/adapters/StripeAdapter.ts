@@ -67,6 +67,19 @@ export class StripeAdapter implements IPaymentService {
     }
   }
 
+  async retrievePaymentIntent(intentId: string): Promise<PaymentIntent | null> {
+    try {
+      const intent = await this.stripe.paymentIntents.retrieve(intentId)
+      return {
+        intentId: intent.id,
+        clientSecret: intent.client_secret!,
+        status: intent.status,
+      }
+    } catch {
+      return null
+    }
+  }
+
   constructWebhookEvent(payload: Buffer, signature: string): WebhookEvent {
     const event = this.stripe.webhooks.constructEvent(payload, signature, this.webhookSecret)
     return {

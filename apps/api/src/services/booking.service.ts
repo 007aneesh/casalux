@@ -104,6 +104,15 @@ export class BookingService {
       pricing.currency = listing.currency ?? 'INR'
 
       const hostPayout = calculateHostPayout(pricing.total, pricing.serviceFee, pricing.taxes)
+      const idempotencyKey = `ib-${guestId}-${input.listingId}-${input.checkIn}`
+
+      // Create payment intent first so we have the orderId for the booking row
+      const intent = await this.payment.createPaymentIntent({
+        amount:    pricing.total,
+        currency:  pricing.currency ?? 'INR',
+        bookingId: idempotencyKey,
+        metadata:  { guestId, listingId: input.listingId },
+      })
 
       // Create booking row: status = pending_payment
       const booking = await this.repo.createBooking({
@@ -128,14 +137,8 @@ export class BookingService {
         paymentProvider:    'stripe',
         payoutStatus:       'pending',
         refundStatus:       'none',
-      })
-
-      // Create payment intent
-      const intent = await this.payment.createPaymentIntent({
-        amount:    pricing.total,
-        currency:  pricing.currency ?? 'INR',
-        bookingId: booking.id,
-        metadata:  { guestId, listingId: input.listingId },
+        paymentOrderId:     intent.intentId,
+        idempotencyKey,
       })
 
       // Cache payment session (30-min TTL)
@@ -144,9 +147,6 @@ export class BookingService {
         JSON.stringify({ bookingId: booking.id, guestId, amount: pricing.total, status: 'pending' }),
         PAYMENT_SESSION_TTL_S
       )
-
-      // Store intentId on booking
-      await this.repo.updateBooking(booking.id, { paymentOrderId: intent.intentId })
 
       return {
         bookingId:        booking.id,
@@ -484,7 +484,31 @@ export class BookingService {
     if (!listing) throw new Error('LISTING_NOT_FOUND')
 
     const pricing   = request.priceSnapshot as unknown as PricingBreakdown
+
+    // Idempotency: if a pending_payment booking already exists for this request, re-use it
+    const existingBooking = await this.repo.findBookingByRequestId(requestId)
+    if (existingBooking && existingBooking.status === 'pending_payment' && existingBooking.paymentOrderId) {
+      const existingIntent = await this.payment.retrievePaymentIntent(existingBooking.paymentOrderId)
+      if (existingIntent?.clientSecret) {
+        return {
+          bookingId:        existingBooking.id,
+          orderId:          existingBooking.paymentOrderId,
+          providerPayload:  { clientSecret: existingIntent.clientSecret, status: existingIntent.status },
+          pricingBreakdown: pricing,
+        }
+      }
+    }
+
     const hostPayout = calculateHostPayout(pricing.total, pricing.serviceFee, pricing.taxes)
+
+    // Create payment intent first so we have the orderId for the booking row
+    const tempBookingId = crypto.randomUUID()
+    const intent = await this.payment.createPaymentIntent({
+      amount:    pricing.total,
+      currency:  pricing.currency ?? 'INR',
+      bookingId: tempBookingId,
+      metadata:  { guestId, requestId },
+    })
 
     const booking = await this.repo.createBooking({
       listingId:          request.listingId,
@@ -509,24 +533,17 @@ export class BookingService {
       paymentProvider:    'stripe',
       payoutStatus:       'pending',
       refundStatus:       'none',
+      paymentOrderId:     intent.intentId,
+      idempotencyKey:     `rtb-${requestId}`,
     })
 
     await this.repo.linkRequestToBooking(requestId, booking.id)
-
-    const intent = await this.payment.createPaymentIntent({
-      amount:    pricing.total,
-      currency:  pricing.currency ?? 'INR',
-      bookingId: booking.id,
-      metadata:  { guestId, requestId },
-    })
 
     await this.cache.set(
       CacheKeys.paySession(intent.intentId),
       JSON.stringify({ bookingId: booking.id, guestId, amount: pricing.total, status: 'pending' }),
       PAYMENT_SESSION_TTL_S
     )
-
-    await this.repo.updateBooking(booking.id, { paymentOrderId: intent.intentId })
 
     // Cancel payment-window expire job
     await this.cancelScheduledJob(CacheKeys.paymentWindowJob(requestId), QUEUES.BOOKING_REQUESTS)
