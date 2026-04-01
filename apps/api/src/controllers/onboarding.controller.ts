@@ -236,7 +236,8 @@ export class OnboardingController {
   /** GET /admin/host-applications */
   async listApplications(c: Context): Promise<Response> {
     try {
-      const applications = await this.service.listSubmitted()
+      const status = c.req.query('status') as string | undefined
+      const applications = await this.service.listSubmitted(status)
       return c.json({ applications })
     } catch (err) {
       return handleOnboardingError(err, c)

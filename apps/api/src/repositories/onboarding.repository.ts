@@ -154,10 +154,11 @@ export class OnboardingRepository {
     })
   }
 
-  async findAllSubmitted() {
+  async findAllSubmitted(status?: string) {
+    const where = status ? { status: status as never } : { status: { in: ['submitted', 'approved', 'rejected', 'in_progress', 'auto_approved'] as never[] } }
     return prisma.hostApplication.findMany({
-      where:   { status: 'submitted' },
-      orderBy: { submittedAt: 'asc' },
+      where,
+      orderBy: { submittedAt: 'desc' },
       include: {
         user: { select: { id: true, clerkId: true, firstName: true, lastName: true, email: true } },
       },

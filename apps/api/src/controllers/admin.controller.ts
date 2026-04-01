@@ -38,13 +38,15 @@ export class AdminController {
   /** GET /admin/stats */
   async getStats(c: Context): Promise<Response> {
     try {
-      const [activeListings, totalBookings, totalUsers, pendingApps] = await Promise.all([
+      const [activeListings, totalBookings, totalUsers, pendingApps, flaggedListings, disputedBookings] = await Promise.all([
         db.listing.count({ where: { status: 'active' } }),
         db.booking.count(),
         db.user.count({ where: { deletedAt: null } }),
         db.hostApplication.count({ where: { status: 'submitted' } }),
+        db.listing.count({ where: { status: 'flagged' } }),
+        db.booking.count({ where: { status: 'disputed' } }),
       ])
-      return c.json({ activeListings, totalBookings, totalUsers, pendingApps })
+      return c.json({ activeListings, totalBookings, totalUsers, pendingApps, flaggedListings, disputedBookings })
     } catch (err) {
       console.error('[AdminController.getStats]', err)
       return c.json({ error: 'Internal server error' }, 500)

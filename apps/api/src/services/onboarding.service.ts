@@ -197,8 +197,8 @@ export class OnboardingService {
     return this.repo.findById(sessionId)
   }
 
-  async listSubmitted() {
-    return this.repo.findAllSubmitted()
+  async listSubmitted(status?: string) {
+    return this.repo.findAllSubmitted(status)
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────

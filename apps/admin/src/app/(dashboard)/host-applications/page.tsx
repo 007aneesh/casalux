@@ -1,14 +1,7 @@
-'use client'
-
-import { useState, useEffect, useCallback } from 'react'
-import { CheckCircle, XCircle, ChevronRight } from 'lucide-react'
-
-interface Application {
-  id: string
-  status: string
-  submittedAt: string | null
-  user: { firstName: string; lastName: string; email: string }
-}
+import Link from 'next/link'
+import { revalidatePath } from 'next/cache'
+import { getHostApplications, approveHostApplication, rejectHostApplication } from '@/lib/api'
+import HostApplicationActions from '@/components/host-applications/HostApplicationActions'
 
 const STATUS_BADGE: Record<string, string> = {
   in_progress:   'bg-gray-100 text-gray-700',
@@ -18,62 +11,85 @@ const STATUS_BADGE: Record<string, string> = {
   rejected:      'bg-red-100 text-red-700',
 }
 
-export default function HostApplicationsPage() {
-  const [applications, setApplications] = useState<Application[]>([])
-  const [loading, setLoading] = useState(true)
-  const [rejectModal, setRejectModal] = useState<{ id: string } | null>(null)
-  const [rejectReason, setRejectReason] = useState('')
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
+const STATUS_FILTERS = [
+  { label: 'All',          value: ''            },
+  { label: 'Pending',      value: 'submitted'   },
+  { label: 'Approved',     value: 'approved'    },
+  { label: 'Rejected',     value: 'rejected'    },
+  { label: 'In progress',  value: 'in_progress' },
+]
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/host-applications')
-      const data = await res.json()
-      setApplications(data.applications ?? [])
-    } catch {
-      setApplications([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+interface PageProps {
+  searchParams: Promise<{ status?: string }>
+}
 
-  useEffect(() => { load() }, [load])
+export default async function HostApplicationsPage({ searchParams }: PageProps) {
+  const { status: statusFilter } = await searchParams
 
-  const approve = async (id: string) => {
-    setActionLoading(id)
-    try {
-      await fetch(`/api/host-applications/${id}/approve`, { method: 'POST' })
-      await load()
-    } finally {
-      setActionLoading(null)
-    }
+  let applications: Awaited<ReturnType<typeof getHostApplications>>['applications'] = []
+  try {
+    const res = await getHostApplications(statusFilter)
+    applications = res.applications ?? []
+  } catch {}
+
+  const pendingCount = statusFilter
+    ? 0
+    : applications.filter((a) => a.status === 'submitted').length
+
+  // ── Server actions ────────────────────────────────────────────────────────────
+  async function handleApprove(id: string) {
+    'use server'
+    await approveHostApplication(id)
+    revalidatePath('/host-applications')
   }
 
-  const reject = async () => {
-    if (!rejectModal || !rejectReason.trim()) return
-    setActionLoading(rejectModal.id)
-    try {
-      await fetch(`/api/host-applications/${rejectModal.id}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectReason }),
-      })
-      setRejectModal(null)
-      setRejectReason('')
-      await load()
-    } finally {
-      setActionLoading(null)
-    }
+  async function handleReject(id: string, reason: string) {
+    'use server'
+    await rejectHostApplication(id, reason)
+    revalidatePath('/host-applications')
   }
 
   return (
     <div>
+      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Host Applications</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{applications.length} applications</p>
+        <p className="text-sm text-gray-500 mt-0.5">
+          {applications.length} application{applications.length !== 1 ? 's' : ''}
+          {pendingCount > 0 && (
+            <span className="ml-2 inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+              {pendingCount} pending review
+            </span>
+          )}
+        </p>
       </div>
 
+      {/* Status filter tabs */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {STATUS_FILTERS.map(({ label, value }) => {
+          const isActive = (statusFilter ?? '') === value
+          return (
+            <Link
+              key={value || 'all'}
+              href={value ? `/host-applications?status=${value}` : '/host-applications'}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                isActive
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'
+              }`}
+            >
+              {label}
+              {value === 'submitted' && pendingCount > 0 && !statusFilter && (
+                <span className="ml-1.5 inline-flex items-center justify-center h-4 w-4 rounded-full text-[10px] bg-amber-500 text-white">
+                  {pendingCount}
+                </span>
+              )}
+            </Link>
+          )
+        })}
+      </div>
+
+      {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -86,15 +102,27 @@ export default function HostApplicationsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {loading ? (
-              <tr><td colSpan={5} className="px-6 py-16 text-center text-gray-400">Loading…</td></tr>
-            ) : applications.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-16 text-center text-gray-400">No applications found</td></tr>
+            {applications.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-16 text-center text-gray-400">
+                  {statusFilter
+                    ? `No ${statusFilter.replace('_', ' ')} applications.`
+                    : 'No host applications yet.'}
+                </td>
+              </tr>
             ) : (
               applications.map((app) => (
                 <tr key={app.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {app.user.firstName} {app.user.lastName}
+                  <td className="px-6 py-4">
+                    <p className="text-sm font-medium text-gray-900">
+                      {app.user.firstName} {app.user.lastName}
+                    </p>
+                    <Link
+                      href={`/users/${app.user.id}`}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      View profile →
+                    </Link>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">{app.user.email}</td>
                   <td className="px-6 py-4">
@@ -104,31 +132,20 @@ export default function HostApplicationsPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                     {app.submittedAt
-                      ? new Date(app.submittedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                      ? new Date(app.submittedAt).toLocaleDateString('en-IN', {
+                          day: 'numeric', month: 'short', year: 'numeric',
+                        })
                       : '—'}
                   </td>
                   <td className="px-6 py-4">
                     {app.status === 'submitted' ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => approve(app.id)}
-                          disabled={actionLoading === app.id}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 text-xs font-medium hover:bg-green-100 transition-colors disabled:opacity-50"
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" />
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => setRejectModal({ id: app.id })}
-                          disabled={actionLoading === app.id}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                          Reject
-                        </button>
-                      </div>
+                      <HostApplicationActions
+                        applicationId={app.id}
+                        onApprove={handleApprove}
+                        onReject={handleReject}
+                      />
                     ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                      <span className="text-xs text-gray-400 italic">—</span>
                     )}
                   </td>
                 </tr>
@@ -138,35 +155,16 @@ export default function HostApplicationsPage() {
         </table>
       </div>
 
-      {/* Reject reason modal */}
-      {rejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Reject application</h2>
-            <p className="text-sm text-gray-500 mb-4">Provide a reason that will be sent to the applicant.</p>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              rows={4}
-              placeholder="Reason for rejection (min 10 characters)…"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
-            />
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => { setRejectModal(null); setRejectReason('') }}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-400 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={reject}
-                disabled={rejectReason.trim().length < 10 || !!actionLoading}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                Reject
-              </button>
-            </div>
-          </div>
+      {/* PM context note */}
+      {!statusFilter && pendingCount > 0 && (
+        <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <p className="text-sm font-medium text-amber-800">
+            {pendingCount} application{pendingCount !== 1 ? 's' : ''} awaiting review
+          </p>
+          <p className="text-xs text-amber-700 mt-1">
+            Approved applicants are immediately granted the host role and can publish listings.
+            Rejected applicants are notified with your reason and may re-apply.
+          </p>
         </div>
       )}
     </div>

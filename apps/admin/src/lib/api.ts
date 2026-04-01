@@ -42,10 +42,12 @@ function hostFetch<T>(path: string, init?: RequestInit) {
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
 export interface AdminStats {
-  activeListings: number
-  totalBookings:  number
-  totalUsers:     number
-  pendingApps:    number
+  activeListings:   number
+  totalBookings:    number
+  totalUsers:       number
+  pendingApps:      number
+  flaggedListings:  number
+  disputedBookings: number
 }
 
 export function getStats() {
@@ -349,11 +351,12 @@ export interface AdminHostApplication {
   id:          string
   status:      string
   submittedAt: string | null
-  user: { firstName: string; lastName: string; email: string }
+  user: { id: string; firstName: string; lastName: string; email: string }
 }
 
-export function getHostApplications() {
-  return adminFetch<{ applications: AdminHostApplication[] }>('/host-applications')
+export function getHostApplications(status?: string) {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+  return adminFetch<{ applications: AdminHostApplication[] }>(`/host-applications${qs}`)
 }
 
 export function approveHostApplication(sessionId: string) {

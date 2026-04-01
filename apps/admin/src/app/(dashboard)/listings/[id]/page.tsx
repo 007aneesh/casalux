@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getListing } from '@/lib/api'
+import { revalidatePath } from 'next/cache'
+import { getListing, updateListingStatus } from '@/lib/api'
+import ListingActions from '@/components/listings/ListingActions'
 
 const STATUS_BADGE: Record<string, string> = {
   draft:    'bg-gray-100 text-gray-700',
@@ -37,6 +39,13 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   try { listing = await getListing(id) } catch { notFound() }
   if (!listing) notFound()
 
+  async function handleStatusChange(status: string, _reason?: string) {
+    'use server'
+    await updateListingStatus(id, status)
+    revalidatePath(`/listings/${id}`)
+    revalidatePath('/listings')
+  }
+
   const price = (listing.basePrice / 100).toLocaleString('en-IN', {
     style: 'currency', currency: listing.currency ?? 'INR', maximumFractionDigits: 0,
   })
@@ -44,10 +53,8 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     style: 'currency', currency: listing.currency ?? 'INR', maximumFractionDigits: 0,
   })
 
-  const primaryImage = listing.images?.find((i) => i.isPrimary) ?? listing.images?.[0]
-
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-7xl">
       {/* Back + header */}
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
@@ -78,7 +85,11 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Left column — all listing detail */}
+        <div className="lg:col-span-2 grid grid-cols-1 gap-6">
+
         {/* Cover image row */}
         {listing.images && listing.images.length > 0 && (
           <Section title={`Images (${listing.images.length})`}>
@@ -126,14 +137,6 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
               <Field label="Total Reviews" value={listing.totalReviews} />
               <Field label="Created" value={new Date(listing.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
               <Field label="Updated" value={new Date(listing.updatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
-            </dl>
-          </Section>
-
-          {/* Host */}
-          <Section title="Host">
-            <dl className="grid grid-cols-1 gap-4">
-              <Field label="Name" value={`${listing.host.user.firstName} ${listing.host.user.lastName}`} />
-              <Field label="Email" value={listing.host.user.email} />
             </dl>
           </Section>
 
@@ -205,6 +208,38 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             </div>
           </Section>
         )}
+
+        </div>{/* end left column */}
+
+        {/* Right column — admin actions */}
+        <div className="space-y-4">
+          <ListingActions
+            listingId={id}
+            currentStatus={listing.status}
+            onStatusChange={handleStatusChange}
+          />
+
+          {/* Host quick info */}
+          <Section title="Host">
+            <dl className="grid grid-cols-1 gap-3">
+              <Field label="Name" value={`${listing.host.user.firstName} ${listing.host.user.lastName}`} />
+              <Field label="Email" value={listing.host.user.email} />
+              {listing.host.isSuperhost && (
+                <Field label="Superhost" value="⭐ Yes" />
+              )}
+              <Field label="Response rate" value={`${listing.host.responseRate.toFixed(0)}%`} />
+            </dl>
+            <div className="mt-3">
+              <Link
+                href={`/users/${listing.host.user.id}`}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                View host profile →
+              </Link>
+            </div>
+          </Section>
+        </div>
+
       </div>
     </div>
   )
