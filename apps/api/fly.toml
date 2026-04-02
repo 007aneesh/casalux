@@ -1,0 +1,25 @@
+# fly.toml — CasaLux Workers (BullMQ background jobs)
+# Deploy with: fly deploy --config apps/api/fly.toml
+#
+# This service runs ONLY the BullMQ workers (search indexing + payment events).
+# The Hono API routes are on Vercel — no HTTP server here.
+# Fly.io free tier: 3 shared-cpu-1x VMs (256 MB each) — 1 is enough for workers.
+
+app = "casalux-workers"
+primary_region = "iad"   # US East — change to match your Neon/Upstash region
+
+[build]
+  dockerfile = "Dockerfile.workers"
+
+[env]
+  NODE_ENV = "production"
+
+# No HTTP service — this is a pure worker process
+# Fly will keep it alive and restart on crash
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[deploy]
+  strategy = "immediate"    # no rolling deploy needed for workers

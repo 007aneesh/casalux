@@ -1,0 +1,65 @@
+# ── Stage 1: deps ─────────────────────────────────────────────────────────────
+FROM node:20-alpine AS deps
+WORKDIR /repo
+
+RUN npm install -g pnpm@9
+
+# Copy workspace manifests
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/db/package.json                   packages/db/package.json
+COPY packages/types/package.json                packages/types/package.json
+COPY packages/utils/package.json                packages/utils/package.json
+COPY packages/auth/package.json                 packages/auth/package.json
+COPY packages/services/cache/package.json       packages/services/cache/package.json
+COPY packages/services/email/package.json       packages/services/email/package.json
+COPY packages/services/payment/package.json     packages/services/payment/package.json
+COPY packages/services/queue/package.json       packages/services/queue/package.json
+COPY packages/services/search/package.json      packages/services/search/package.json
+COPY packages/services/storage/package.json     packages/services/storage/package.json
+COPY apps/api/package.json                      apps/api/package.json
+
+RUN pnpm install --frozen-lockfile
+
+# ── Stage 2: build ────────────────────────────────────────────────────────────
+FROM deps AS builder
+WORKDIR /repo
+
+COPY packages/ packages/
+COPY apps/api/src/ apps/api/src/
+COPY apps/api/tsconfig.json apps/api/tsconfig.json
+COPY apps/api/tsconfig.build.json apps/api/tsconfig.build.json
+
+# Build workspace packages first
+RUN pnpm --filter @casalux/db build 2>/dev/null || true
+RUN pnpm --filter @casalux/types build 2>/dev/null || true
+RUN pnpm --filter @casalux/utils build 2>/dev/null || true
+RUN pnpm --filter @casalux/auth build 2>/dev/null || true
+RUN pnpm --filter @casalux/services-cache build 2>/dev/null || true
+RUN pnpm --filter @casalux/services-email build 2>/dev/null || true
+RUN pnpm --filter @casalux/services-payment build 2>/dev/null || true
+RUN pnpm --filter @casalux/services-queue build 2>/dev/null || true
+RUN pnpm --filter @casalux/services-search build 2>/dev/null || true
+RUN pnpm --filter @casalux/services-storage build 2>/dev/null || true
+
+# Generate Prisma client
+RUN pnpm --filter @casalux/db exec prisma generate
+
+# Build API
+RUN pnpm --filter @casalux/api build
+
+# ── Stage 3: runtime ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /repo
+
+RUN npm install -g pnpm@9
+ENV NODE_ENV=production
+
+COPY --from=builder /repo/node_modules ./node_modules
+COPY --from=builder /repo/packages ./packages
+COPY --from=builder /repo/apps/api/dist ./apps/api/dist
+COPY --from=builder /repo/apps/api/package.json ./apps/api/package.json
+
+WORKDIR /repo/apps/api
+
+# Start workers only — no HTTP server
+CMD ["node", "dist/workers-main.js"]
