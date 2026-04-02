@@ -12,7 +12,6 @@ import type { CacheService } from '@casalux/services-cache'
 import { CacheKeys } from '@casalux/services-cache'
 import type { ISearchService } from '@casalux/services-search'
 import type { QueueService } from '@casalux/services-queue'
-import { QUEUES } from '@casalux/services-queue'
 import { calculatePrice, daysUntilCheckIn } from '@casalux/utils'
 import type { ListingSearchParams } from '@casalux/types'
 import type { ListingStatus, PropertyType, RoomType, CancellationPolicy, Prisma } from '@casalux/db'
@@ -424,7 +423,6 @@ export class ListingService {
       const doc = this.buildESDoc(refreshed)
       await this.search.index('listings', id, doc as unknown as Record<string, unknown>).catch(() => {})
     }
-    await this.enqueueSearchIndex(id)
 
     return refreshed!
   }
@@ -439,20 +437,15 @@ export class ListingService {
     await this.cache.delPattern('cache:listings:*')
 
     if (status === 'active') {
-      // Index synchronously so it's immediately searchable, then also enqueue for reliability
+      // Index inline so it's immediately searchable
       const fresh = await this.repo.findById(id)
       if (fresh) {
         const doc = this.buildESDoc(fresh)
         await this.search.index('listings', id, doc as unknown as Record<string, unknown>).catch(() => {})
       }
-      await this.enqueueSearchIndex(id)
     } else {
       // Remove from ES index when paused/archived/flagged
       await this.search.delete('listings', id).catch(() => {})
-      await this.queue.enqueue(QUEUES.SEARCH_INDEXING, {
-        type: 'delete-listing',
-        data: { listingId: id },
-      })
     }
   }
 
@@ -687,13 +680,6 @@ export class ListingService {
       current.setDate(current.getDate() + 1)
     }
     return dates
-  }
-
-  private async enqueueSearchIndex(listingId: string): Promise<void> {
-    await this.queue.enqueue(QUEUES.SEARCH_INDEXING, {
-      type: 'index-listing',
-      data: { listingId },
-    })
   }
 
   private async geocodeAddress(address: object): Promise<{ lat: number; lng: number }> {

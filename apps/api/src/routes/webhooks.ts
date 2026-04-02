@@ -11,8 +11,8 @@ import { Hono } from 'hono'
 import { Webhook }  from 'svix'
 import { db }       from '@casalux/db'
 import { CacheKeys } from '@casalux/services-cache'
-import { QUEUES }    from '@casalux/services-queue'
-import { cacheService, paymentService, queueService } from '../container.js'
+import { cacheService, paymentService } from '../container.js'
+import { handlePaymentCaptured, handlePaymentFailed } from '../services/payment-event-handlers.js'
 
 export const webhooksRouter = new Hono()
 
@@ -168,19 +168,33 @@ webhooksRouter.post('/payment', async (c) => {
   // Mark as processing immediately
   await cacheService.set(idempotencyKey, 'processing', 86400) // 24h TTL
 
-  // Step 3 — Enqueue to payment-events queue (concurrency: 1 — serial)
-  await queueService.enqueue(QUEUES.PAYMENT_EVENTS, {
-    type: 'process-webhook-event',
-    data: {
-      provider,
-      eventId,
-      eventType,
-      payload:   webhookEvent,
-    },
-  })
+  // Step 3 — Process inline (Stripe retries on non-2xx, so no queue needed)
+  try {
+    const obj = (webhookEvent as any).data?.object ?? {}
 
-  console.log(`[payment-webhook] enqueued: ${provider}/${eventType}/${eventId}`)
+    switch (eventType) {
+      case 'payment_intent.succeeded': {
+        // orderId = PaymentIntent.id, paymentId = first charge id
+        const intentId = obj.id as string
+        const chargeId = (obj.latest_charge ?? obj.charges?.data?.[0]?.id ?? '') as string
+        await handlePaymentCaptured(intentId, chargeId)
+        break
+      }
+      case 'payment_intent.payment_failed': {
+        const intentId = obj.id as string
+        await handlePaymentFailed(intentId)
+        break
+      }
+      // charge.refunded is confirmation-only — refunds are initiated by our system
+      default:
+        console.log(`[payment-webhook] unhandled event type: ${eventType}`)
+    }
+  } catch (err) {
+    console.error(`[payment-webhook] processing failed for ${eventType}/${eventId}:`, err)
+    // Return 500 so Stripe retries the webhook
+    return c.json({ error: 'Processing failed' }, 500)
+  }
 
-  // Step 4 — Return 200 immediately (< 3s requirement from provider)
+  console.log(`[payment-webhook] processed: ${provider}/${eventType}/${eventId}`)
   return c.json({ success: true })
 })

@@ -6,19 +6,18 @@
 Browser → Vercel (web)          casalux.com
 Browser → Vercel (admin)        admin.casalux.com
 Web/Admin → Vercel (API)        api.casalux.com
-Fly.io (workers)                background jobs only — no public traffic
 API → Neon (Postgres)
-API → Upstash (Redis)
-API → Elastic Cloud / Bonsai (Search)
+API → Upstash (Redis)           caching only
+API → Bonsai (Search)
 API → Cloudinary (Images)
 API → Resend (Email)
 API → Stripe (Payments)
 API → Clerk (Auth)
 ```
 
-**All three apps deploy to Vercel (free).** The only thing that needs a persistent VM is the
-BullMQ background workers (search indexing + payment events). Those run on **Fly.io free tier**
-(1 shared-cpu VM, 256 MB — permanently free).
+**All three apps deploy to Vercel. Zero separate servers.** Background jobs (search indexing,
+payment events) are processed inline — payment events run synchronously in the Stripe webhook
+handler (Stripe retries on failure), and search indexing runs inline when listings change.
 
 ---
 
@@ -27,7 +26,7 @@ BullMQ background workers (search indexing + payment events). Those run on **Fly
 | Service | What for | Free tier |
 |---|---|---|
 | [Neon](https://neon.tech) | Postgres database | Yes (0.5 GB) |
-| [Upstash](https://upstash.com) | Redis (cache + BullMQ queues) | Yes (10k req/day) |
+| [Upstash](https://upstash.com) | Redis cache + email queue | Yes (10k req/day) |
 | [Bonsai](https://bonsai.io) | Elasticsearch (listing search) | Free Sandbox tier |
 | [Clerk](https://clerk.com) | Auth | Free (10k MAU) |
 | [Stripe](https://stripe.com) | Payments | Free (2.9% + 30¢ per txn) |
@@ -56,14 +55,14 @@ The Hono API runs as a single Vercel serverless function.
 
 ### 2b. Set environment variables
 
-In Vercel → Project → Settings → Environment Variables, add everything from `apps/api/.env.example`:
+In Vercel → Project → Settings → Environment Variables:
 
 ```
 NODE_ENV=production
 CORS_ORIGINS=https://casalux.com,https://admin.casalux.com
 DATABASE_URL=<neon connection string>
 REDIS_URL=<upstash redis url>
-ELASTICSEARCH_URL=<bonsai or elastic cloud url>
+ELASTICSEARCH_URL=<bonsai url>
 CLERK_SECRET_KEY=sk_live_...
 CLERK_WEBHOOK_SECRET=whsec_...
 STRIPE_SECRET_KEY=sk_live_...
@@ -79,15 +78,12 @@ PLATFORM_SERVICE_FEE_PERCENT=12
 
 ### 2c. Run database migrations
 
-After first deploy, use the [Vercel CLI](https://vercel.com/docs/cli) or Neon dashboard to run:
-
 ```bash
-# Option A — run locally, pointing at production DB
+# Run locally pointing at the production DB:
 DATABASE_URL=<neon url> pnpm --filter @casalux/db exec prisma migrate deploy
-
-# Option B — Vercel CLI one-off function invocation
-# Add a temporary /migrate route or use the Neon SQL editor to run migrations
 ```
+
+Or use the Neon SQL editor to run migrations directly.
 
 ### 2d. Set custom domain
 
@@ -96,8 +92,8 @@ Vercel → Project → Settings → Domains → Add → `api.casalux.com`
 ### 2e. Configure Stripe webhook
 
 Stripe Dashboard → Developers → Webhooks → Add endpoint:
-- URL: `https://api.casalux.com/api/v1/webhooks/stripe`
-- Events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`
+- URL: `https://api.casalux.com/api/v1/webhooks/payment`
+- Events: `payment_intent.succeeded`, `payment_intent.payment_failed`
 - Copy the **Signing secret** → set as `STRIPE_WEBHOOK_SECRET` in Vercel
 
 ### 2f. Configure Clerk webhook
@@ -109,73 +105,9 @@ Clerk Dashboard → Webhooks → Add endpoint:
 
 ---
 
-## Step 3 — Deploy background workers (Fly.io)
+## Step 3 — Deploy the web app (Vercel)
 
-BullMQ workers need a persistent process — they can't run on Vercel serverless.
-Fly.io free tier gives 3 always-on VMs. We use 1 for the workers.
-
-### 3a. Install Fly CLI
-
-```bash
-brew install flyctl       # macOS
-# or: curl -L https://fly.io/install.sh | sh
-```
-
-### 3b. Sign up and create the app
-
-```bash
-fly auth signup           # or: fly auth login
-fly apps create casalux-workers --org personal
-```
-
-### 3c. Set secrets (env vars)
-
-```bash
-cd apps/api
-
-fly secrets set \
-  NODE_ENV=production \
-  DATABASE_URL="<neon url>" \
-  REDIS_URL="<upstash url>" \
-  ELASTICSEARCH_URL="<bonsai url>" \
-  CLERK_SECRET_KEY="sk_live_..." \
-  STRIPE_SECRET_KEY="sk_live_..." \
-  CLOUDINARY_CLOUD_NAME="..." \
-  CLOUDINARY_API_KEY="..." \
-  CLOUDINARY_API_SECRET="..." \
-  RESEND_API_KEY="re_..." \
-  --config fly.toml
-```
-
-### 3d. Deploy workers
-
-From the **repo root** (Dockerfile.workers needs the full monorepo context):
-
-```bash
-fly deploy \
-  --config apps/api/fly.toml \
-  --dockerfile apps/api/Dockerfile.workers \
-  --build-context .
-```
-
-The worker process starts and stays alive. It processes:
-- **search-indexing queue** — indexes new/updated listings in Elasticsearch
-- **payment-events queue** — handles Stripe webhook events (payment succeeded/failed)
-
-### 3e. Verify workers are running
-
-```bash
-fly logs --config apps/api/fly.toml
-# Should show:
-# 🔧 CasaLux Workers starting...
-# ✅ Workers running — search indexing + payment events
-```
-
----
-
-## Step 4 — Deploy the web app (Vercel)
-
-### 4a. Import project
+### 3a. Import project
 
 1. Go to [vercel.com](https://vercel.com) → New Project → Import from GitHub
 2. Select this repo
@@ -183,7 +115,7 @@ fly logs --config apps/api/fly.toml
 4. **Framework Preset**: Next.js
 5. **Build Command**: `cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @casalux/web build`
 
-### 4b. Set environment variables
+### 3b. Set environment variables
 
 ```
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
@@ -196,23 +128,19 @@ NEXT_PUBLIC_API_URL=https://api.casalux.com
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 ```
 
-### 4c. Set custom domain
+### 3c. Set custom domain
 
 Vercel → Project → Settings → Domains → Add → `casalux.com`
 
-### 4d. Set Clerk production URLs
-
-Clerk Dashboard → your application → Domains → Add `casalux.com` as a production domain.
-
 ---
 
-## Step 5 — Deploy the admin app (Vercel)
+## Step 4 — Deploy the admin app (Vercel)
 
-Same as Step 4 but:
+Same as Step 3 but:
 
 1. **Root Directory**: `apps/admin`
 2. **Build Command**: `cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @casalux/admin build`
-3. Environment variables from `apps/admin/.env.example`:
+3. Environment variables:
 
 ```
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...   # same key as web
@@ -229,7 +157,7 @@ Set this in Clerk Dashboard → Users → select user → Metadata → Public �
 
 ---
 
-## Step 6 — Verify everything
+## Step 5 — Verify
 
 | Check | How |
 |---|---|
@@ -237,29 +165,19 @@ Set this in Clerk Dashboard → Users → select user → Metadata → Public �
 | API docs | Open `https://api.casalux.com/docs` |
 | Web | `https://casalux.com` loads |
 | Admin | `https://admin.casalux.com` loads, sign in as admin |
-| Workers | `fly logs --config apps/api/fly.toml` — no errors |
-| Migrations | Neon dashboard → Tables → all tables present |
-| Stripe | Make a test booking, check Stripe Dashboard → Events |
-| Search | Create a listing, search for it — results appear |
+| Migrations | Neon dashboard → Tables — all tables present |
+| Stripe | Make a test booking, check Stripe Dashboard → Events — webhook shows 200 |
+| Search | Create a listing, search for it — appears in results |
 
 ---
 
 ## Updating
 
-### API change (routes/controllers/services)
-Push to `main` → Vercel auto-deploys the API function.
-
-### Workers change (workers/search-indexing.worker.ts etc.)
-```bash
-fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile.workers --build-context .
-```
-
-### Web / Admin change
-Push to `main` → Vercel auto-deploys.
+### Any code change
+Push to `main` → Vercel auto-deploys all three projects.
 
 ### Schema change (new migration)
 ```bash
-# Run after Vercel deploys the new API code:
 DATABASE_URL=<neon url> pnpm --filter @casalux/db exec prisma migrate deploy
 ```
 
@@ -272,7 +190,6 @@ DATABASE_URL=<neon url> pnpm --filter @casalux/db exec prisma migrate deploy
 | Vercel (API) | Hobby | **Free** |
 | Vercel (web) | Hobby | **Free** |
 | Vercel (admin) | Hobby | **Free** |
-| Fly.io (workers) | Free tier (3 VMs) | **Free** |
 | Neon (Postgres) | Free | **Free** |
 | Upstash (Redis) | Free | **Free** |
 | Bonsai (Elasticsearch) | Sandbox | **Free** |
@@ -282,4 +199,4 @@ DATABASE_URL=<neon url> pnpm --filter @casalux/db exec prisma migrate deploy
 | Stripe | Pay per transaction | 2.9% + 30¢ |
 | **Total fixed cost** | | **$0/mo** |
 
-For production scale: upgrade Neon ($19/mo), Upstash Pay-as-you-go (~$0.2/100k req), Bonsai Staging ($10/mo).
+For production scale: upgrade Neon ($19/mo), Upstash Pay-as-you-go, Bonsai Staging ($10/mo).
