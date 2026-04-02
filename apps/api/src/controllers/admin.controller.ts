@@ -121,11 +121,22 @@ export class AdminController {
   /** PATCH /admin/listings/:id/status */
   async updateListingStatus(c: Context): Promise<Response> {
     try {
-      const id     = c.req.param('id')
-      const body   = await c.req.json() as { status: string }
+      const id      = c.req.param('id')
+      const authUser = c.get('authUser') as { clerkId: string }
+      const body    = await c.req.json() as { status: string }
+      const before  = await db.listing.findUnique({ where: { id }, select: { status: true } })
       const listing = await db.listing.update({
         where: { id },
         data:  { status: body.status as never },
+      })
+      await logAudit({
+        actorClerkId: authUser.clerkId,
+        action:       `listing.${body.status === 'flagged' ? 'flag' : 'status_change'}`,
+        entityType:   'listing',
+        entityId:     id,
+        before:       { status: before?.status },
+        after:        { status: body.status },
+        c,
       })
       return c.json({ listing })
     } catch (err) {
@@ -590,6 +601,43 @@ export class AdminController {
       return c.json({ success: true })
     } catch (err) {
       console.error('[AdminController.deleteUser]', err)
+      return c.json({ error: 'Internal server error' }, 500)
+    }
+  }
+
+  /** GET /admin/audit-logs?page=1&entityType=&action=&actorId= */
+  async getAuditLogs(c: Context): Promise<Response> {
+    try {
+      const page       = Math.max(1, parseInt(c.req.query('page') ?? '1', 10))
+      const limit      = 50
+      const skip       = (page - 1) * limit
+      const entityType = c.req.query('entityType') as string | undefined
+      const action     = c.req.query('action')     as string | undefined
+      const actorId    = c.req.query('actorId')    as string | undefined
+
+      const where: Record<string, unknown> = {}
+      if (entityType) where['entityType'] = entityType
+      if (action)     where['action']     = { contains: action }
+      if (actorId)    where['actorId']    = actorId
+
+      const [logs, total] = await Promise.all([
+        db.auditLog.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+          include: {
+            actor: {
+              select: { id: true, clerkId: true, firstName: true, lastName: true, email: true },
+            },
+          },
+        }),
+        db.auditLog.count({ where }),
+      ])
+
+      return c.json({ logs, total, page, limit })
+    } catch (err) {
+      console.error('[AdminController.getAuditLogs]', err)
       return c.json({ error: 'Internal server error' }, 500)
     }
   }

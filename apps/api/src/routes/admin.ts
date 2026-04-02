@@ -65,3 +65,6 @@ adminRouter.delete('/users/:id',                (c) => adminController.deleteUse
 adminRouter.get( '/host-applications',                    (c) => onboardingController.listApplications(c))
 adminRouter.post('/host-applications/:sessionId/approve', (c) => onboardingController.approve(c))
 adminRouter.post('/host-applications/:sessionId/reject',  (c) => onboardingController.reject(c))
+
+// ─── Audit logs ───────────────────────────────────────────────────────────────
+adminRouter.get('/audit-logs', (c) => adminController.getAuditLogs(c))

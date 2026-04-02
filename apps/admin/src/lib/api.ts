@@ -369,3 +369,36 @@ export function rejectHostApplication(sessionId: string, reason: string) {
     body:   JSON.stringify({ reason }),
   })
 }
+
+// ─── Audit logs ───────────────────────────────────────────────────────────────
+export interface AuditLog {
+  id:         string
+  action:     string
+  entityType: string
+  entityId:   string
+  before:     Record<string, unknown> | null
+  after:      Record<string, unknown> | null
+  ip:         string | null
+  userAgent:  string | null
+  createdAt:  string
+  actor: {
+    id:        string
+    clerkId:   string
+    firstName: string
+    lastName:  string
+    email:     string
+  }
+}
+
+export function getAuditLogs(opts: {
+  page?:       number
+  entityType?: string
+  action?:     string
+  actorId?:    string
+}) {
+  const qs = new URLSearchParams({ page: String(opts.page ?? 1) })
+  if (opts.entityType) qs.set('entityType', opts.entityType)
+  if (opts.action)     qs.set('action', opts.action)
+  if (opts.actorId)    qs.set('actorId', opts.actorId)
+  return adminFetch<{ logs: AuditLog[]; total: number; page: number; limit: number }>(`/audit-logs?${qs}`)
+}

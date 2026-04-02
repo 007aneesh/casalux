@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { label: 'Bookings',           href: '/bookings',           icon: '📋' },
   { label: 'Users',              href: '/users',              icon: '👤' },
   { label: 'Host Applications',  href: '/host-applications',  icon: '📝' },
+  { label: 'Audit Log',          href: '/audit-log',          icon: '🔍' },
 ]
 
 export default function Sidebar(): JSX.Element {
