@@ -129,7 +129,7 @@ export class ListingController {
 
   // GET /api/v1/listings/:id
   async getListingById(c: Context) {
-    const id = c.req.param('id') as string
+    const id = c.req.param('id') as string as string
     const listing = await this.service.getListingById(id)
 
     if (!listing) {
@@ -141,7 +141,7 @@ export class ListingController {
 
   // GET /api/v1/listings/:id/availability
   async getAvailability(c: Context) {
-    const id = c.req.param('id')
+    const id = c.req.param('id') as string
     const parsed = availabilityQuerySchema.safeParse(Object.fromEntries(new URLSearchParams(c.req.url.split('?')[1] ?? '')))
     if (!parsed.success) {
       return c.json({ success: false, error: { code: 'VALIDATION_ERROR', details: parsed.error.flatten() } }, 400)
@@ -159,7 +159,7 @@ export class ListingController {
 
   // GET /api/v1/listings/:id/pricing-preview
   async getPricingPreview(c: Context) {
-    const id = c.req.param('id')
+    const id = c.req.param('id') as string
     const parsed = pricingPreviewSchema.safeParse(Object.fromEntries(new URLSearchParams(c.req.url.split('?')[1] ?? '')))
     if (!parsed.success) {
       return c.json({ success: false, error: { code: 'VALIDATION_ERROR', details: parsed.error.flatten() } }, 400)
@@ -189,7 +189,7 @@ export class ListingController {
 
   // GET /api/v1/listings/:id/reviews
   async getReviews(c: Context) {
-    const id  = c.req.param('id')
+    const id  = c.req.param('id') as string
     const page    = parseInt(c.req.query('page')  ?? '1',  10)
     const limit   = parseInt(c.req.query('limit') ?? '10', 10)
     const result  = await this.service.getReviews(id, page, limit)
@@ -265,7 +265,7 @@ export class ListingController {
   // GET /api/v1/host/listings/:id
   async getHostListingById(c: Context) {
     const authUser      = c.get('authUser')
-    const id            = c.req.param('id')
+    const id            = c.req.param('id') as string
     const isAdmin       = authUser.role === 'admin' || authUser.role === 'super_admin'
     const hostProfileId = isAdmin ? '' : await this.service.resolveHostProfileId(authUser.dbUserId)
 
@@ -283,7 +283,7 @@ export class ListingController {
   // PUT /api/v1/host/listings/:id
   async updateListing(c: Context) {
     const authUser = c.get('authUser')
-    const id   = c.req.param('id')
+    const id   = c.req.param('id') as string
     const body     = await c.req.json()
     const parsed   = updateListingSchema.safeParse(body)
 
@@ -312,7 +312,7 @@ export class ListingController {
   // PATCH /api/v1/host/listings/:id/status
   async updateStatus(c: Context) {
     const authUser = c.get('authUser')
-    const id   = c.req.param('id')
+    const id   = c.req.param('id') as string
     const body     = await c.req.json()
     const parsed   = updateStatusSchema.safeParse(body)
 
@@ -335,7 +335,7 @@ export class ListingController {
   // PUT /api/v1/host/listings/:id/availability
   async updateAvailability(c: Context) {
     const authUser = c.get('authUser')
-    const id   = c.req.param('id')
+    const id   = c.req.param('id') as string
     const body     = await c.req.json()
 
     const schema = z.object({ rules: z.array(availabilityRuleSchema) })

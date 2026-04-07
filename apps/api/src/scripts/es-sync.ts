@@ -41,7 +41,7 @@ async function main() {
 
   const docs = listings.map((listing: any) => ({
     id: listing.id,
-    doc: svc.buildESDoc(listing) as Record<string, unknown>,
+    doc: svc.buildESDoc(listing) as unknown as Record<string, unknown>,
   }))
 
   await search.bulkIndex('listings', docs)

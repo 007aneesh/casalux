@@ -4,7 +4,7 @@
  *
  * ALL Redis key constants are defined here to enforce PRD Section 5.1 namespace conventions.
  */
-import Redis from 'ioredis'
+import { Redis } from 'ioredis'
 
 interface CacheConfig {
   url: string

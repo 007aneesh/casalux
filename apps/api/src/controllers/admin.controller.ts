@@ -4,6 +4,7 @@
  */
 import type { Context } from 'hono'
 import { db } from '@casalux/db'
+import type { Prisma } from '@casalux/db'
 import { createClerkClient } from '@clerk/backend'
 
 const clerk = createClerkClient({ secretKey: process.env['CLERK_SECRET_KEY']! })
@@ -24,8 +25,8 @@ async function logAudit(params: {
         action:     params.action,
         entityType: params.entityType,
         entityId:   params.entityId,
-        before:     params.before  ?? undefined,
-        after:      params.after   ?? undefined,
+        before:     params.before as unknown as Prisma.InputJsonValue ?? undefined,
+        after:      params.after  as unknown as Prisma.InputJsonValue ?? undefined,
         ip:         params.c.req.header('x-forwarded-for') ?? params.c.req.header('x-real-ip') ?? undefined,
         userAgent:  params.c.req.header('user-agent') ?? undefined,
       },
@@ -89,7 +90,7 @@ export class AdminController {
   /** POST /admin/listings/:id/amenities — create + attach a custom amenity */
   async addCustomAmenity(c: Context): Promise<Response> {
     try {
-      const id   = c.req.param('id')
+      const id   = c.req.param('id') as string
       const body = await c.req.json() as { name?: string }
       const name = body.name?.trim()
       if (!name) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'name is required' } }, 400)
@@ -121,7 +122,7 @@ export class AdminController {
   /** PATCH /admin/listings/:id/status */
   async updateListingStatus(c: Context): Promise<Response> {
     try {
-      const id      = c.req.param('id')
+      const id      = c.req.param('id') as string
       const authUser = c.get('authUser') as { clerkId: string }
       const body    = await c.req.json() as { status: string }
       const before  = await db.listing.findUnique({ where: { id }, select: { status: true } })
@@ -187,7 +188,7 @@ export class AdminController {
   /** GET /admin/bookings/:id — full booking detail */
   async getBookingDetail(c: Context): Promise<Response> {
     try {
-      const id = c.req.param('id')
+      const id = c.req.param('id') as string
 
       const booking = await db.booking.findUnique({
         where: { id },
@@ -218,7 +219,7 @@ export class AdminController {
   /** PATCH /admin/bookings/:id/cancel — body: { reason: string, refundAmount?: number } */
   async cancelBooking(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
       const body     = await c.req.json() as { reason?: string; refundAmount?: number }
 
@@ -254,7 +255,7 @@ export class AdminController {
   /** PATCH /admin/bookings/:id/refund — body: { refundAmount: number, refundStatus: string } */
   async overrideRefund(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
       const body     = await c.req.json() as { refundAmount: number; refundStatus: string }
 
@@ -282,7 +283,7 @@ export class AdminController {
   /** PATCH /admin/bookings/:id/payout — body: { payoutStatus: string } */
   async overridePayout(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
       const body     = await c.req.json() as { payoutStatus: string }
 
@@ -310,7 +311,7 @@ export class AdminController {
   /** PATCH /admin/bookings/:id/dispute — body: { disputed: boolean, reason?: string } */
   async setDispute(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
       const body     = await c.req.json() as { disputed: boolean; reason?: string }
 
@@ -372,7 +373,7 @@ export class AdminController {
   /** GET /admin/users/:id — full user detail with stats */
   async getUserDetail(c: Context): Promise<Response> {
     try {
-      const id = c.req.param('id')
+      const id = c.req.param('id') as string
 
       const user = await db.user.findUnique({
         where: { id },
@@ -457,7 +458,7 @@ export class AdminController {
   /** PATCH /admin/users/:id/ban */
   async banUser(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
       const body     = await c.req.json() as { reason?: string }
 
@@ -481,7 +482,7 @@ export class AdminController {
   /** PATCH /admin/users/:id/unban */
   async unbanUser(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
 
       const target = await db.user.findUnique({ where: { id }, select: { isBanned: true, bannedReason: true } })
@@ -500,7 +501,7 @@ export class AdminController {
   /** PATCH /admin/users/:id/verify — body: { verified: boolean } */
   async setVerification(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
       const body     = await c.req.json() as { verified: boolean }
 
@@ -521,7 +522,7 @@ export class AdminController {
   /** PATCH /admin/users/:id/role — body: { role: string } */
   async changeRole(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
       const body     = await c.req.json() as { role: string }
 
@@ -559,7 +560,7 @@ export class AdminController {
   /** PATCH /admin/users/:id/superhost — body: { grant: boolean } */
   async toggleSuperhost(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
       const body     = await c.req.json() as { grant: boolean }
 
@@ -584,7 +585,7 @@ export class AdminController {
   /** DELETE /admin/users/:id — soft delete */
   async deleteUser(c: Context): Promise<Response> {
     try {
-      const id       = c.req.param('id')
+      const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
 
       const user = await db.user.findUnique({ where: { id }, select: { role: true, deletedAt: true, clerkId: true } })

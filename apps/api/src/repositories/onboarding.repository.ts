@@ -6,7 +6,7 @@
  * Each PATCH step merges into the existing JSON rather than replacing it.
  */
 import { db as prisma } from '@casalux/db'
-import type { HostApplicationStatus } from '@casalux/db'
+import type { HostApplicationStatus, Prisma } from '@casalux/db'
 
 export interface OnboardingSessionData {
   // Step 2 — space
@@ -110,7 +110,7 @@ export class OnboardingRepository {
 
     return prisma.hostApplication.update({
       where: { id: sessionId },
-      data:  { sessionData: merged },
+      data:  { sessionData: merged as unknown as Prisma.InputJsonValue },
     })
   }
 

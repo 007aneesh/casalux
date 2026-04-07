@@ -11,6 +11,7 @@ import { Hono } from 'hono'
 import { z }    from 'zod'
 import { requireAuth, requireRole } from '@casalux/auth'
 import { db }         from '@casalux/db'
+import type { Prisma } from '@casalux/db'
 import { CacheKeys }  from '@casalux/services-cache'
 import { QUEUES }     from '@casalux/services-queue'
 import { storageService, cacheService, queueService } from '../container.js'
@@ -133,7 +134,7 @@ uploadsRouter.post('/confirm', async (c) => {
       }
       await db.listing.update({
         where: { id: entityId },
-        data:  { images: [...existing, newImage] },
+        data:  { images: [...existing, newImage] as unknown as Prisma.InputJsonValue[] },
       })
     }
   }
