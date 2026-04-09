@@ -150,8 +150,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_BADGE[user.role] ?? 'bg-gray-100 text-gray-700'}`}>
                 {user.role.replace('_', ' ')}
               </span>
-              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_MAP[accountStatus].cls}`}>
-                {STATUS_MAP[accountStatus].label}
+              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_MAP[accountStatus]!.cls}`}>
+                {STATUS_MAP[accountStatus]!.label}
               </span>
               {user.verificationStatus === 'verified' && (
                 <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">✓ Verified</span>
@@ -229,7 +229,6 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 <Field label="Response rate" value={`${user.hostProfile.responseRate.toFixed(0)}%`} />
                 <Field label="Avg response time" value={`${user.hostProfile.avgResponseTimeHours}h`} />
                 <Field label="Cancellations" value={user.hostProfile.hostCancellationCount} />
-                <Field label="Response window" value={`${user.hostProfile.responseWindowHours}h`} />
                 <Field label="Superhost granted" value={user.hostProfile.superhostGrantedAt ? new Date(user.hostProfile.superhostGrantedAt).toLocaleDateString('en-IN') : '—'} />
                 {user.hostProfile.bio && (
                   <div className="col-span-2">
@@ -245,6 +244,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             <Section title="Host Application">
               {(() => {
                 const app = user.hostApplications[0]
+                if (!app) return null
                 const appBadge: Record<string, string> = {
                   in_progress:   'bg-gray-100 text-gray-600',
                   submitted:     'bg-yellow-100 text-yellow-700',

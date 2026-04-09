@@ -58,7 +58,7 @@ function ActionButton({
 export default function ListingActions({ listingId, currentStatus, onStatusChange }: Props) {
   const router = useRouter()
   const [action, setAction]           = useState<ActionType>(null)
-  const [flagReason, setFlagReason]   = useState(FLAG_REASONS[0])
+  const [flagReason, setFlagReason]   = useState<string>(FLAG_REASONS[0] ?? '')
   const [toast, setToast]             = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [pending, startTransition]    = useTransition()
 

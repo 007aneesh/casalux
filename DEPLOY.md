@@ -40,7 +40,7 @@ handler (Stripe retries on failure), and search indexing runs inline when listin
 The Hono API runs as a single Vercel serverless function.
 `apps/api/api/index.ts` exports `app.fetch` as the default handler.
 `apps/api/vercel.json` rewrites all traffic to that function.
-
+`
 ### 2a. Import project in Vercel
 
 1. Go to [vercel.com](https://vercel.com) → New Project → Import from GitHub
@@ -59,9 +59,9 @@ In Vercel → Project → Settings → Environment Variables:
 
 ```
 NODE_ENV=production
-CORS_ORIGINS=https://casalux.com,https://admin.casalux.com
+CORS_ORIGINS=https://casalux.vercel.app,http://localhost:3000
 DATABASE_URL=<neon connection string>
-REDIS_URL=<upstash redis url>
+REDIS_URL=rediss://default:gQAAAAAAAW6tAAIncDE2YmU4YjljODViNWY0ZDMyYWQzM2NhYjZkYWNlMWFlMHAxOTM4Njk@thorough-husky-93869.upstash.io:6379
 ELASTICSEARCH_URL=<bonsai url>
 CLERK_SECRET_KEY=sk_live_...
 CLERK_WEBHOOK_SECRET=whsec_...
