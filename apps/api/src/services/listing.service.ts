@@ -115,6 +115,7 @@ export class ListingService {
     const cached   = await this.cache.get(cacheKey)
     if (cached) return JSON.parse(cached)
 
+
     const listing = await this.repo.findById(id)
     if (!listing) return null
 

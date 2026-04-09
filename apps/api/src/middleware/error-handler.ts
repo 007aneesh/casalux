@@ -24,7 +24,8 @@ export const errorHandler: ErrorHandler = (err, c) => {
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: status === 500 ? 'Internal server error' : err.message,
+        message: err.message,
+        stack: err.stack,
       },
     },
     status as 400 | 401 | 403 | 404 | 409 | 422 | 500
