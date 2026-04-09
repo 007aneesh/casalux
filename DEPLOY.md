@@ -52,6 +52,8 @@ The Hono API runs as a single Vercel serverless function.
 
 > The build command installs from the monorepo root so all workspace packages
 > (`@casalux/db`, `@casalux/auth`, etc.) are available.
+> The root `.npmrc` sets `production=false` so pnpm installs devDependencies even
+> when Vercel sets `NODE_ENV=production` — this is required for `tsc` to be available.
 
 ### 2b. Set environment variables
 
