@@ -28,6 +28,7 @@ export const useLanguageStore = create<LanguageState>()(
     }),
     {
       name: 'casalux-language',
+      skipHydration: true,
       onRehydrateStorage: () => (state) => {
         if (state && typeof document !== 'undefined') {
           document.documentElement.dir = state.isRTL ? 'rtl' : 'ltr'

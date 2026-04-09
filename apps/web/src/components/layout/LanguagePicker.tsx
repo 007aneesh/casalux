@@ -12,6 +12,11 @@ export function LanguagePicker() {
   const { locale, setLocale } = useLanguageStore()
   const { t } = useTranslation()
 
+  // Rehydrate language store after mount to avoid SSR/client hydration mismatch
+  useEffect(() => {
+    useLanguageStore.persist.rehydrate()
+  }, [])
+
   // Close on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {

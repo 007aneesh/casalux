@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   SignInButton,
   SignUpButton,
@@ -25,6 +25,12 @@ import { SearchBar } from './SearchBar'
 import { LanguagePicker } from './LanguagePicker'
 import { useTranslation } from '@/lib/i18n/store'
 
+function useHasMounted() {
+  const [hasMounted, setHasMounted] = useState(false)
+  useEffect(() => setHasMounted(true), [])
+  return hasMounted
+}
+
 const Logo = () => (
   <Link href="/" className="flex items-center gap-2 shrink-0">
     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-navy">
@@ -40,8 +46,10 @@ export function Navbar() {
   const pathname = usePathname()
   const isHome = pathname === '/'
   const [menuOpen, setMenuOpen] = useState(false)
+  const hasMounted = useHasMounted()
   const { user } = useUser()
-  const role = user?.publicMetadata?.role as string | undefined
+  // Only derive isHost after mount to avoid SSR/client Clerk state mismatch
+  const role = hasMounted ? user?.publicMetadata?.role as string | undefined : undefined
   const isHost = role === 'host' || role === 'admin'
   const { t } = useTranslation()
 
