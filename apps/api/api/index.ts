@@ -4,9 +4,10 @@
  * Vercel automatically picks up files in the `api/` directory.
  * The `vercel.json` rewrites all traffic to this function.
  *
- * NOTE: BullMQ workers (search indexing, payment events) are NOT started here
- * because Vercel functions are ephemeral. Those run on Fly.io (workers-main.ts).
+ * Uses @hono/node-server/vercel to bridge Hono's Web-API fetch handler
+ * to the Node.js (req, res) format that Vercel's Node runtime expects.
  */
+import { handle } from '@hono/node-server/vercel'
 import app from '../src/app.js'
 
-export default app.fetch
+export default handle(app)
