@@ -1,13 +1,15 @@
 /**
  * esbuild bundler for the Vercel serverless function.
  *
- * Bundles api/index.ts (and all workspace packages) into a single
- * api/index.js file so @vercel/node never has to resolve .ts workspace
- * packages at runtime.
+ * Bundles src/vercel-entry.ts (and all workspace/npm deps) into api/index.js
+ * so @vercel/node never has to resolve .ts workspace packages at runtime.
  *
- * Only *.node native binaries are kept external — they are copied next to
- * the bundle by the postbuild step in package.json so Prisma's __dirname
- * resolution finds them.
+ * Native binary handling:
+ *   - File-path requires  (e.g. require('./libquery_engine-rhel-…so.node'))
+ *     → kept external; the binaries are copied next to the bundle below.
+ *   - Package-path requires (e.g. require('apache-arrow/Arrow.node'))
+ *     → stubbed with an empty module so the pure-JS fallback is used.
+ *     These are optional perf addons (Apache Arrow, etc.) that ship a JS impl.
  */
 
 import { build } from 'esbuild'
@@ -19,6 +21,31 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const prismaClientDir = resolve(__dirname, '../../packages/db/generated/prisma-client')
 const outDir = resolve(__dirname, 'api')
 
+/** esbuild plugin: routes .node requires correctly */
+const nativeModulesPlugin = {
+  name: 'native-modules',
+  setup(build) {
+    // Relative/absolute file-path requires (./foo.node, /abs/foo.node)
+    // — keep external; the actual binary will be on disk at runtime.
+    build.onResolve({ filter: /^[./].*\.node$/ }, args => ({
+      path: args.path,
+      external: true,
+    }))
+
+    // Package-path requires (apache-arrow/Arrow.node, leveldown/prebuilds/…)
+    // — stub with an empty CommonJS module so the pure-JS fallback is used.
+    build.onResolve({ filter: /^[^./].*\.node$/ }, args => {
+      console.log(`[native-modules] stubbing package-native require: ${args.path}`)
+      return { path: args.path, namespace: 'native-stub' }
+    })
+
+    build.onLoad({ filter: /.*/, namespace: 'native-stub' }, () => ({
+      contents: 'module.exports = {}',
+      loader: 'js',
+    }))
+  },
+}
+
 await build({
   entryPoints: ['src/vercel-entry.ts'],
   bundle: true,
@@ -26,9 +53,7 @@ await build({
   target: ['node20'],
   format: 'esm',
   outfile: 'api/index.js',
-  // Native binaries cannot be bundled — keep them external so Node.js
-  // loads them via require() at runtime from the same directory.
-  external: ['*.node'],
+  plugins: [nativeModulesPlugin],
   tsconfig: 'tsconfig.json',
   logLevel: 'info',
   // Prisma's generated client is CommonJS and uses __dirname / require.
