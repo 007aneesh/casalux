@@ -20,7 +20,7 @@ const prismaClientDir = resolve(__dirname, '../../packages/db/generated/prisma-c
 const outDir = resolve(__dirname, 'api')
 
 await build({
-  entryPoints: ['api/index.ts'],
+  entryPoints: ['src/vercel-entry.ts'],
   bundle: true,
   platform: 'node',
   target: ['node20'],
