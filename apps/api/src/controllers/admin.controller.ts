@@ -427,8 +427,8 @@ export class AdminController {
           })
         : []
 
-      const totalListings  = hostListingStats.reduce((s, r) => s + r._count.id, 0)
-      const activeListings = hostListingStats.find((r) => r.status === 'active')?._count.id ?? 0
+      const totalListings  = hostListingStats.reduce((s: number, r: { _count: { id: number } }) => s + r._count.id, 0)
+      const activeListings = (hostListingStats as Array<{ status: string; _count: { id: number } }>).find((r) => r.status === 'active')?._count.id ?? 0
 
       return c.json({
         success: true,
