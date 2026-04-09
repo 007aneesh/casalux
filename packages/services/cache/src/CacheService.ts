@@ -14,6 +14,11 @@ export class CacheService {
   private redis: Redis
 
   constructor(config: CacheConfig) {
+    if (!config.url) {
+      console.error('[CacheService] REDIS_URL is not set — cache operations will fail')
+      this.redis = new Redis('redis://localhost:6379', { lazyConnect: true, enableOfflineQueue: false })
+      return
+    }
     this.redis = new Redis(config.url, { lazyConnect: true })
   }
 

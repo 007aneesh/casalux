@@ -68,6 +68,11 @@ export class QueueService {
   private queues: Map<string, Queue> = new Map()
 
   constructor(config: QueueConfig) {
+    if (!config.redisUrl) {
+      console.error('[QueueService] REDIS_URL is not set — queue operations will fail')
+      this.connectionOptions = { host: 'localhost', port: 6379, maxRetriesPerRequest: null } as ConnectionOptions
+      return
+    }
     const url = new URL(config.redisUrl)
     this.connectionOptions = {
       host:                url.hostname,
