@@ -4,9 +4,9 @@
     { "source": "/(.*)", "destination": "/api" }
   ],
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 30,
-      "includeFiles": "../../packages/db/generated/prisma-client/**"
+      "includeFiles": "api/*.node"
     }
   },
   "headers": [
