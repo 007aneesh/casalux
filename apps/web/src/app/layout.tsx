@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { Analytics } from '@vercel/analytics/next'
 import { Navbar } from '@/components/layout/Navbar'
 import { SWRProvider } from '@/components/providers/SWRProvider'
 import './globals.css'
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </main>
             <Footer />
+            <Analytics />
           </SWRProvider>
         </body>
       </html>
