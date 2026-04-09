@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../generated/prisma-client/index.js'
 
 // Singleton pattern — one PrismaClient per process
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
@@ -11,8 +11,8 @@ export const db =
 
 if (process.env['NODE_ENV'] !== 'production') globalForPrisma.prisma = db
 
-export { Prisma } from '@prisma/client'
-export type { PrismaClient } from '@prisma/client'
+export { Prisma } from '../generated/prisma-client/index.js'
+export type { PrismaClient } from '../generated/prisma-client/index.js'
 
 // ─── Enum types — single source of truth lives in @casalux/types ─────────────
 // Re-exported here so DB-layer code can import from one place (@casalux/db)

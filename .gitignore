@@ -37,3 +37,4 @@ packages/db/src/generated
 
 # Misc
 *.tsbuildinfo
+packages/db/generated/
