@@ -31,12 +31,17 @@ await build({
   external: ['*.node'],
   tsconfig: 'tsconfig.json',
   logLevel: 'info',
-  // Suppress Prisma's "missing peer dependency" warning spam.
+  // Prisma's generated client is CommonJS and uses __dirname / require.
+  // Inject CJS compatibility shims at the top of the ESM bundle.
   banner: {
     js: [
       '// esbuild bundle — do not edit directly.',
       'import { createRequire } from "module";',
+      'import { fileURLToPath } from "url";',
+      'import { dirname } from "path";',
       'const require = createRequire(import.meta.url);',
+      'const __filename = fileURLToPath(import.meta.url);',
+      'const __dirname = dirname(__filename);',
     ].join('\n'),
   },
 })
