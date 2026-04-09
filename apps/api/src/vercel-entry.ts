@@ -1,11 +1,27 @@
 /**
  * Vercel serverless entry point.
- *
- * esbuild (esbuild.config.mjs) bundles this file into api/index.js so that
- * Node.js never has to resolve TypeScript workspace packages at runtime.
- * Do not import this file directly — it is only used as an esbuild entry.
+ * esbuild bundles this into api/index.js — see esbuild.config.mjs.
  */
-import { handle } from '@hono/node-server/vercel'
-import app from './app.js'
+import type { IncomingMessage, ServerResponse } from 'http'
 
-export default handle(app)
+type Handler = (req: IncomingMessage, res: ServerResponse) => void
+
+let handler: Handler
+
+try {
+  const { handle } = await import('@hono/node-server/vercel')
+  const { default: app } = await import('./app.js')
+  handler = handle(app) as Handler
+} catch (err) {
+  console.error('[casalux] FATAL init error', err)
+  handler = (_req, res) => {
+    res.writeHead(500, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({
+      error: 'App failed to initialise',
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    }))
+  }
+}
+
+export default handler
