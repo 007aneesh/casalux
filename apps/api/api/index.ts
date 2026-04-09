@@ -1,13 +1,23 @@
 /**
  * Vercel serverless entry point.
- *
- * Vercel automatically picks up files in the `api/` directory.
- * The `vercel.json` rewrites all traffic to this function.
- *
- * Uses @hono/node-server/vercel to bridge Hono's Web-API fetch handler
- * to the Node.js (req, res) format that Vercel's Node runtime expects.
  */
-import { handle } from '@hono/node-server/vercel'
-import app from '../src/app.js'
+let handler: ReturnType<typeof import('@hono/node-server/vercel').handle>
 
-export default handle(app)
+try {
+  const { handle } = await import('@hono/node-server/vercel')
+  const { default: app } = await import('../src/app.js')
+  handler = handle(app)
+} catch (err) {
+  console.error('[casalux] FATAL: failed to initialise app', err)
+  // Return the error as a 500 so we can read it in Vercel's function logs
+  handler = (_req: import('http').IncomingMessage, res: import('http').ServerResponse) => {
+    res.writeHead(500, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({
+      error: 'App failed to initialise',
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    }))
+  }
+}
+
+export default handler
