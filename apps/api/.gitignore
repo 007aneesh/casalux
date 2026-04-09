@@ -1,5 +1,4 @@
 dist/
-# esbuild bundle output and copied Prisma artifacts — created during Vercel build
-api/index.js
+# Prisma native binaries and schema copied next to the bundle during Vercel build
 api/*.node
 api/schema.prisma
