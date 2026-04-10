@@ -5,7 +5,7 @@
  * Index naming convention: casalux_{entity}
  * Alias naming convention: casalux_{entity} → casalux_{entity}_v{N}
  */
-import { Client } from '@elastic/elasticsearch'
+import { Client } from '@opensearch-project/opensearch'
 import type {
   ISearchService,
   SearchQuery,
