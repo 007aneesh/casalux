@@ -24,7 +24,14 @@ export class ElasticsearchAdapter implements ISearchService {
   private client: Client
 
   constructor(config: ESConfig) {
-    this.client = new Client({ node: config.node, auth: config.auth, enableMetaHeader: false })
+    this.client = new Client({
+      node: config.node,
+      auth: config.auth,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    })
   }
 
   private indexName(entity: string): string {
