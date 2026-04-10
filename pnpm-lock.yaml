@@ -469,8 +469,8 @@ importers:
   packages/services/search:
     dependencies:
       '@elastic/elasticsearch':
-        specifier: ^7.17.0
-        version: 7.17.14
+        specifier: 7.13.0
+        version: 7.13.0
     devDependencies:
       '@casalux/config':
         specifier: workspace:*
@@ -1460,8 +1460,8 @@ packages:
   '@coinbase/wallet-sdk@4.3.0':
     resolution: {integrity: sha512-T3+SNmiCw4HzDm4we9wCHCxlP0pqCiwKe4sOwPH3YAK2KSKjxPRydKu6UQJrdONFVLG7ujXvbd/6ZqmvJb8rkw==}
 
-  '@elastic/elasticsearch@7.17.14':
-    resolution: {integrity: sha512-6uQ1pVXutwz1Krwooo67W+3K8BwH1ASMh1WoHTpomUzw8EXecXN5lHIJ9EPqTHuv1WqR2LKkSJyagcq0HYUJpg==}
+  '@elastic/elasticsearch@7.13.0':
+    resolution: {integrity: sha512-WgwLWo2p9P2tdqzBGX9fHeG8p5IOTXprXNTECQG2mJ7z9n93N5AFBJpEw4d35tWWeCWi9jI13A2wzQZH7XZ/xw==}
     engines: {node: '>=12'}
 
   '@emnapi/core@1.9.1':
@@ -9525,7 +9525,7 @@ snapshots:
       eventemitter3: 5.0.4
       preact: 10.29.0
 
-  '@elastic/elasticsearch@7.17.14':
+  '@elastic/elasticsearch@7.13.0':
     dependencies:
       debug: 4.4.3
       hpagent: 0.1.2
