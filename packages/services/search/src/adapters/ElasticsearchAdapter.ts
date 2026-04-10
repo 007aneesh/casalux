@@ -24,14 +24,7 @@ export class ElasticsearchAdapter implements ISearchService {
   private client: Client
 
   constructor(config: ESConfig) {
-    this.client = new Client({
-      node: config.node,
-      auth: config.auth,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    })
+    this.client = new Client({ node: config.node, auth: config.auth })
   }
 
   private indexName(entity: string): string {
@@ -41,8 +34,8 @@ export class ElasticsearchAdapter implements ISearchService {
   async ensureIndex(entity: string, mapping: Record<string, unknown>): Promise<void> {
     const index = this.indexName(entity)
     const exists = await this.client.indices.exists({ index })
-    if (!exists) {
-      await this.client.indices.create({ index, mappings: mapping as any })
+    if (!exists.body) {
+      await this.client.indices.create({ index, body: { mappings: mapping } })
       console.log(`[ES] Created index: ${index}`)
     }
   }
@@ -51,7 +44,7 @@ export class ElasticsearchAdapter implements ISearchService {
     await this.client.index({
       index: this.indexName(entity),
       id,
-      document: doc,
+      body: doc,
     })
   }
 
@@ -65,17 +58,20 @@ export class ElasticsearchAdapter implements ISearchService {
   ): Promise<SearchResult<T>> {
     const from = ((query.page ?? 1) - 1) * (query.limit ?? 20)
 
-    const response = await this.client.search<T>({
+    const response = await this.client.search<any>({
       index: this.indexName(entity),
-      from,
-      size: query.limit ?? 20,
-      query: query.filters ?? { match_all: {} },
-      sort: query.sort?.map((s) => ({ [s.field]: s.order })),
+      body: {
+        from,
+        size: query.limit ?? 20,
+        query: query.filters ?? { match_all: {} },
+        sort: query.sort?.map((s) => ({ [s.field]: s.order })),
+      },
     })
 
+    const hits = response.body.hits
     return {
-      hits: response.hits.hits.map((h) => h._source as T),
-      total: typeof response.hits.total === 'number' ? response.hits.total : (response.hits.total?.value ?? 0),
+      hits: hits.hits.map((h: any) => h._source as T),
+      total: typeof hits.total === 'number' ? hits.total : (hits.total?.value ?? 0),
       page: query.page ?? 1,
       limit: query.limit ?? 20,
     }
@@ -100,18 +96,20 @@ export class ElasticsearchAdapter implements ISearchService {
   async suggest(entity: string, prefix: string): Promise<Suggestion[]> {
     const response = await this.client.search({
       index: this.indexName(entity),
-      suggest: {
-        title_suggest: {
-          prefix,
-          completion: { field: 'title.suggest', size: 5 },
+      body: {
+        suggest: {
+          title_suggest: {
+            prefix,
+            completion: { field: 'title.suggest', size: 5 },
+          },
         },
       },
     })
 
-    const suggests = response.suggest?.['title_suggest']
+    const suggests = response.body.suggest?.['title_suggest']
     if (!suggests || !Array.isArray(suggests)) return []
 
-    return suggests.flatMap((s) =>
+    return suggests.flatMap((s: any) =>
       (s.options as Array<{ text: string; _score: number }>).map((o) => ({
         text: o.text,
         score: o._score,
@@ -122,12 +120,12 @@ export class ElasticsearchAdapter implements ISearchService {
   async bulkIndex(entity: string, docs: IndexDoc[]): Promise<void> {
     if (docs.length === 0) return
 
-    const operations = docs.flatMap(({ id, doc }) => [
+    const body = docs.flatMap(({ id, doc }) => [
       { index: { _index: this.indexName(entity), _id: id } },
       doc,
     ])
 
-    await this.client.bulk({ operations })
+    await this.client.bulk({ body })
   }
 
   // ─── Blue/Green Re-index (PRD Section 6.3) ────────────────────────────────
@@ -141,19 +139,21 @@ export class ElasticsearchAdapter implements ISearchService {
 
     // 2. Bulk-index all docs into new index
     if (docs.length > 0) {
-      const operations = docs.flatMap(({ id, doc }) => [
+      const body = docs.flatMap(({ id, doc }) => [
         { index: { _index: newIndex, _id: id } },
         doc,
       ])
-      await this.client.bulk({ operations })
+      await this.client.bulk({ body })
     }
 
     // 3. Atomic alias swap
     await this.client.indices.updateAliases({
-      actions: [
-        { remove: { index: oldIndex, alias } },
-        { add: { index: newIndex, alias } },
-      ],
+      body: {
+        actions: [
+          { remove: { index: oldIndex, alias } },
+          { add: { index: newIndex, alias } },
+        ],
+      },
     })
 
     // 4. Delete old index
