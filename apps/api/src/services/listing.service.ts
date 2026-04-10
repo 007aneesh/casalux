@@ -86,23 +86,37 @@ export class ListingService {
     const cached   = await this.cache.get(cacheKey)
     if (cached) return JSON.parse(cached)
 
-    const esQuery = this.buildESQuery(params)
-    const result  = await this.search.search<ESListingDoc>('listings', {
-      filters: esQuery,
-      sort:    this.buildESSort(params.sortBy),
-      page,
-      limit,
-    })
-
-    const response = {
-      success: true,
-      data: result.hits,
-      meta: {
+    let response: any
+    try {
+      const esQuery = this.buildESQuery(params)
+      const result  = await this.search.search<ESListingDoc>('listings', {
+        filters: esQuery,
+        sort:    this.buildESSort(params.sortBy),
         page,
         limit,
-        total:      result.total,
-        totalPages: Math.ceil(result.total / limit),
-      },
+      })
+      response = {
+        success: true,
+        data: result.hits,
+        meta: {
+          page,
+          limit,
+          total:      result.total,
+          totalPages: Math.ceil(result.total / limit),
+        },
+      }
+    } catch (err: any) {
+      // ES index not yet created — fall back to DB
+      if (err?.meta?.body?.error?.type === 'index_not_found_exception' || err?.message?.includes('index_not_found_exception')) {
+        const { listings, total } = await this.repo.findMany({ status: 'active', page, limit })
+        response = {
+          success: true,
+          data: listings.map((l: any) => this.shapeListing(l)),
+          meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        }
+      } else {
+        throw err
+      }
     }
 
     await this.cache.set(cacheKey, JSON.stringify(response), 300) // 5 min TTL
