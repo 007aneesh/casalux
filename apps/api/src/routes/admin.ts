@@ -39,9 +39,10 @@ adminRouter.use('*', requireAuth(), requireRole('admin'))
 adminRouter.get('/stats', (c) => adminController.getStats(c))
 
 // ─── Listings ─────────────────────────────────────────────────────────────────
-adminRouter.get(  '/listings',                      (c) => adminController.getListings(c))
-adminRouter.patch('/listings/:id/status',           (c) => adminController.updateListingStatus(c))
-adminRouter.post( '/listings/:id/amenities',        (c) => adminController.addCustomAmenity(c))
+adminRouter.get(   '/listings',              (c) => adminController.getListings(c))
+adminRouter.patch( '/listings/:id/status',   (c) => adminController.updateListingStatus(c))
+adminRouter.delete('/listings/:id',          (c) => adminController.deleteListing(c))
+adminRouter.post(  '/listings/:id/amenities',(c) => adminController.addCustomAmenity(c))
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────
 adminRouter.get(   '/bookings',              (c) => adminController.getBookings(c))

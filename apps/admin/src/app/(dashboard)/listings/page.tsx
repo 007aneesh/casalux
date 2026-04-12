@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getListings } from '@/lib/api'
+import { DeleteListingButton } from '@/components/listings/DeleteListingButton'
 
 const STATUS_BADGE: Record<string, string> = {
   draft:    'bg-gray-100 text-gray-700',
@@ -73,13 +74,18 @@ export default async function ListingsPage({
               </tr>
             ) : (
               data.listings.map((l) => {
-                const city    = l.address?.city ?? '—'
+                const city    = (l.address as Record<string, string> | null)?.city ?? '—'
                 const price   = (l.basePrice / 100).toLocaleString('en-IN', {
                   style: 'currency', currency: l.currency ?? 'INR', maximumFractionDigits: 0,
                 })
                 const created = new Date(l.createdAt).toLocaleDateString('en-IN', {
                   day: '2-digit', month: 'short', year: 'numeric',
                 })
+                // Guard: host or user relation missing (bad seed / orphaned FK)
+                const hostName  = l.host?.user
+                  ? `${l.host.user.firstName} ${l.host.user.lastName}`.trim()
+                  : '—'
+                const hostEmail = l.host?.user?.email ?? '—'
 
                 return (
                   <tr key={l.id} className="hover:bg-gray-50 transition-colors">
@@ -89,8 +95,8 @@ export default async function ListingsPage({
                       </Link>
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">
-                      <div className="font-medium">{l.host.user.firstName} {l.host.user.lastName}</div>
-                      <div className="text-xs text-gray-400">{l.host.user.email}</div>
+                      <div className="font-medium">{hostName}</div>
+                      <div className="text-xs text-gray-400">{hostEmail}</div>
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">{city}</td>
                     <td className="px-5 py-4 text-sm text-gray-700 font-medium whitespace-nowrap">{price}</td>
@@ -114,6 +120,7 @@ export default async function ListingsPage({
                         >
                           Edit
                         </Link>
+                        <DeleteListingButton id={l.id} title={l.title} />
                       </div>
                     </td>
                   </tr>

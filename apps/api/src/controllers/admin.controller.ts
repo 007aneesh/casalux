@@ -146,6 +146,40 @@ export class AdminController {
     }
   }
 
+  /** DELETE /admin/listings/:id */
+  async deleteListing(c: Context): Promise<Response> {
+    try {
+      const id       = c.req.param('id') as string
+      const authUser = c.get('authUser') as { clerkId: string }
+
+      const listing = await db.listing.findUnique({
+        where:  { id },
+        select: { id: true, title: true, status: true },
+      })
+      if (!listing) {
+        return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Listing not found' } }, 404)
+      }
+
+      // Hard-delete: cascades to amenities, availability rules, media assets, etc.
+      await db.listing.delete({ where: { id } })
+
+      await logAudit({
+        actorClerkId: authUser.clerkId,
+        action:       'listing.delete',
+        entityType:   'listing',
+        entityId:     id,
+        before:       { title: listing.title, status: listing.status },
+        after:        null,
+        c,
+      })
+
+      return c.json({ success: true })
+    } catch (err) {
+      console.error('[AdminController.deleteListing]', err)
+      return c.json({ error: 'Internal server error' }, 500)
+    }
+  }
+
   /** GET /admin/bookings?page=1&status=&from=&to= */
   async getBookings(c: Context): Promise<Response> {
     try {
