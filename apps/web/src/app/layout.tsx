@@ -34,6 +34,11 @@ export const metadata: Metadata = {
     description: 'Discover and book curated luxury stays around the world.',
     type: 'website',
   },
+  // Icon metadata — Next.js picks up icon.tsx / apple-icon.tsx automatically,
+  // but explicitly declaring metadataBase enables absolute OG image URLs.
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? 'https://casalux.vercel.app'
+  ),
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -41,6 +46,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html lang="en" className={`${playfair.variable} ${inter.variable} scroll-smooth`} suppressHydrationWarning>
         <body className="min-h-screen bg-background text-foreground antialiased">
+          {/* Resource hints — React 18 hoists these to <head> */}
+          {/* Cloudinary: Next.js image optimiser fetches originals server-side,
+              but these also help any direct Cloudinary loads (OG images, etc.) */}
+          <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+          <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+          {/* API origin: helps the SWR-based client fetches on search/bookings pages */}
+          <link
+            rel="preconnect"
+            href={process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}
+            crossOrigin="anonymous"
+          />
           <SWRProvider>
             <Navbar />
             <main className="min-h-[calc(100vh-4rem)]">

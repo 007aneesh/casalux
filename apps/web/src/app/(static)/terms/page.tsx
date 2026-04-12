@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { PageHero, PageContainer, SectionHeading, Prose } from '../layout'
+import { PageHero, PageContainer, SectionHeading, Prose } from '../_shared'
 
 export const metadata: Metadata = {
   title: 'Terms of Service',

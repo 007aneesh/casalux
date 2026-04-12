@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { PageHero, PageContainerWide, SectionHeading } from '../layout'
+import { PageHero, PageContainerWide, SectionHeading } from '../_shared'
 
 export const metadata: Metadata = {
   title: 'Resources for Hosts',

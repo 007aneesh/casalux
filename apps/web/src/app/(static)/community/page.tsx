@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { PageHero, PageContainer } from '../layout'
+import { PageHero, PageContainer } from '../_shared'
 
 export const metadata: Metadata = {
   title: 'Community Forum',

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { PageHero, PageContainer, SectionHeading } from '../layout'
+import { PageHero, PageContainer, SectionHeading } from '../_shared'
 
 export const metadata: Metadata = {
   title: 'Newsroom',

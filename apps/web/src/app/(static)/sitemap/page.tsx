@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { PageHero, PageContainerWide } from '../layout'
+import { PageHero, PageContainerWide } from '../_shared'
 
 export const metadata: Metadata = {
   title: 'Sitemap',
