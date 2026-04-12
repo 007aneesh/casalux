@@ -22,10 +22,27 @@ import { rateLimiter } from './middleware/rate-limiter.js'
 
 const app = new Hono()
 
+// ── Allowed origins ────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env['CORS_ORIGINS'] ?? '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean)
+
 // Global middleware
 app.use('*', logger())
-app.use('*', cors({ origin: process.env['CORS_ORIGINS']?.split(',') ?? '*' }))
-app.use('*', secureHeaders())
+app.use('*', cors({
+  // Use a function so origin matching is explicit and whitespace-safe
+  origin: (origin) => ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0] ?? '',
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  credentials: true,   // needed for Authorization header pass-through
+  maxAge: 600,         // cache preflight 10 min
+}))
+app.use('*', secureHeaders({
+  // The default is 'same-origin' which blocks ALL cross-origin reads —
+  // this is a public API, so it must be 'cross-origin'.
+  crossOriginResourcePolicy: 'cross-origin',
+}))
 app.use('/api/*', rateLimiter)
 
 // Health check
