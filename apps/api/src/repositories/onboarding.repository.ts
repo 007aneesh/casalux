@@ -171,15 +171,6 @@ export class OnboardingRepository {
     })
   }
 
-  async findByIdWithUser(sessionId: string) {
-    return prisma.hostApplication.findUnique({
-      where: { id: sessionId },
-      include: {
-        user: { select: { id: true, clerkId: true, firstName: true, lastName: true, email: true, profileImageUrl: true } },
-      },
-    })
-  }
-
   async findAllSubmitted(status?: string) {
     const where = status ? { status: status as never } : { status: { in: ['submitted', 'approved', 'rejected', 'in_progress', 'auto_approved'] as never[] } }
     return prisma.hostApplication.findMany({
