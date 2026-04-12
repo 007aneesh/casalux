@@ -64,33 +64,33 @@ function Footer() {
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-3">Support</h4>
             <ul className="space-y-2 text-sm text-muted">
-              <li><a href="#" className="hover:text-foreground transition-colors">Help Centre</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Safety information</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Cancellation options</a></li>
+              <li><a href="/help" className="hover:text-foreground transition-colors">Help Centre</a></li>
+              <li><a href="/safety" className="hover:text-foreground transition-colors">Safety information</a></li>
+              <li><a href="/cancellations" className="hover:text-foreground transition-colors">Cancellation options</a></li>
             </ul>
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-3">Hosting</h4>
             <ul className="space-y-2 text-sm text-muted">
               <li><a href="/host/dashboard" className="hover:text-foreground transition-colors">Host your home</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Resources for hosts</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Community forum</a></li>
+              <li><a href="/host-resources" className="hover:text-foreground transition-colors">Resources for hosts</a></li>
+              <li><a href="/community" className="hover:text-foreground transition-colors">Community forum</a></li>
             </ul>
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-3">CasaLux</h4>
             <ul className="space-y-2 text-sm text-muted">
-              <li><a href="#" className="hover:text-foreground transition-colors">Newsroom</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Careers</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Investors</a></li>
+              <li><a href="/newsroom" className="hover:text-foreground transition-colors">Newsroom</a></li>
+              <li><a href="/careers" className="hover:text-foreground transition-colors">Careers</a></li>
+              <li><a href="/investors" className="hover:text-foreground transition-colors">Investors</a></li>
             </ul>
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-3">Legal</h4>
             <ul className="space-y-2 text-sm text-muted">
-              <li><a href="#" className="hover:text-foreground transition-colors">Privacy</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Terms</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Sitemap</a></li>
+              <li><a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a></li>
+              <li><a href="/terms" className="hover:text-foreground transition-colors">Terms</a></li>
+              <li><a href="/sitemap" className="hover:text-foreground transition-colors">Sitemap</a></li>
             </ul>
           </div>
         </div>
