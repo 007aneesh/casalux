@@ -13,12 +13,14 @@ import type { Listing } from '@casalux/types'
 import { WishlistPicker } from './WishlistPicker'
 
 interface ListingCardProps {
-  listing: Listing
+  listing:   Listing
   className?: string
   priority?: boolean
+  /** Passed through to next/image sizes — callers know the layout better */
+  sizes?:    string
 }
 
-export function ListingCard({ listing, className, priority = false }: ListingCardProps) {
+export function ListingCard({ listing, className, priority = false, sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw' }: ListingCardProps) {
   const { isSignedIn } = useAuth()
   const [currentImage, setCurrentImage] = useState(0)
   const [isWishlistLoading, setIsWishlistLoading] = useState(false)
@@ -76,24 +78,31 @@ export function ListingCard({ listing, className, priority = false }: ListingCar
     >
       {/* Image carousel */}
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-surface">
-        {images?.map((img, idx) => (
-          <div
-            key={img.publicId}
-            className={cn(
-              'absolute inset-0 transition-opacity duration-300',
-              idx === currentImage ? 'opacity-100' : 'opacity-0'
-            )}
-          >
-            <Image
-              src={img.url}
-              alt={listing.title}
-              fill
-              className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              priority={priority && idx === 0}
-            />
-          </div>
-        ))}
+        {images?.map((img, idx) => {
+          // Only mount the first image and the currently-visible image.
+          // This prevents a card with 5 images × 12 results from firing
+          // 60 simultaneous image requests on the search page.
+          // When the user navigates the carousel, the new image renders on demand.
+          if (idx !== 0 && idx !== currentImage) return null
+          return (
+            <div
+              key={img.publicId}
+              className={cn(
+                'absolute inset-0 transition-opacity duration-300',
+                idx === currentImage ? 'opacity-100' : 'opacity-0'
+              )}
+            >
+              <Image
+                src={img.url}
+                alt={listing.title}
+                fill
+                className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                sizes={sizes}
+                priority={priority && idx === 0}
+              />
+            </div>
+          )
+        })}
 
         {/* Image gradient overlay */}
         <div className="absolute inset-0 listing-gradient opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />

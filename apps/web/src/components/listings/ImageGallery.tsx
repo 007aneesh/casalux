@@ -39,25 +39,29 @@ export function ImageGallery({ images, title }: ImageGalleryProps) {
     <>
       {/* Mobile: full-width swipeable carousel */}
       <div className="sm:hidden relative aspect-[4/3] rounded-2xl overflow-hidden bg-surface">
-        {sorted.map((img, idx) => (
-          <div
-            key={img.publicId}
-            className={cn(
-              'absolute inset-0 transition-opacity duration-300',
-              idx === lightboxIndex ? 'opacity-100' : 'opacity-0'
-            )}
-            onClick={() => openLightbox(idx)}
-          >
-            <Image
-              src={img.url}
-              alt={idx === 0 ? title : `${title} — photo ${idx + 1}`}
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority={idx === 0}
-            />
-          </div>
-        ))}
+        {sorted.map((img, idx) => {
+          // Only mount visible + current to avoid loading all gallery images upfront
+          if (idx !== 0 && idx !== lightboxIndex) return null
+          return (
+            <div
+              key={img.publicId}
+              className={cn(
+                'absolute inset-0 transition-opacity duration-300',
+                idx === lightboxIndex ? 'opacity-100' : 'opacity-0'
+              )}
+              onClick={() => openLightbox(idx)}
+            >
+              <Image
+                src={img.url}
+                alt={idx === 0 ? title : `${title} — photo ${idx + 1}`}
+                fill
+                className="object-cover"
+                sizes="100vw"
+                priority={idx === 0}
+              />
+            </div>
+          )
+        })}
         {sorted.length > 1 && (
           <>
             <button
@@ -104,7 +108,7 @@ export function ImageGallery({ images, title }: ImageGalleryProps) {
           />
         </div>
 
-        {/* Secondary images */}
+        {/* Secondary images — lazy-loaded (below the fold or not LCP) */}
         {secondary.map((img, i) => (
           <div
             key={img.publicId}
@@ -115,8 +119,9 @@ export function ImageGallery({ images, title }: ImageGalleryProps) {
               src={img.url}
               alt={`${title} — photo ${i + 2}`}
               fill
+              loading="lazy"
               className="object-cover group-hover:brightness-95 transition-all duration-200"
-              sizes="25vw"
+              sizes="(max-width: 768px) 50vw, 25vw"
             />
           </div>
         ))}
@@ -147,7 +152,7 @@ export function ImageGallery({ images, title }: ImageGalleryProps) {
             </button>
           </div>
 
-          {/* Main image */}
+          {/* Main image — no priority (lightbox opens on interaction, never LCP) */}
           <div className="flex-1 relative flex items-center justify-center px-16">
             <div className="relative w-full h-full max-w-5xl mx-auto">
               <Image
@@ -156,7 +161,6 @@ export function ImageGallery({ images, title }: ImageGalleryProps) {
                 fill
                 className="object-contain"
                 sizes="100vw"
-                priority
               />
             </div>
 
