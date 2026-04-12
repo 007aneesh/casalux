@@ -71,17 +71,20 @@ hostRouter.post('/booking-requests/:id/approve',     (c) => bookingController.ap
 hostRouter.post('/booking-requests/:id/decline',     (c) => bookingController.declineRequest(c))
 
 // ─── Host onboarding (8-step wizard) ─────────────────────────────────────────
-// Only requireAuth() — the user becomes a host AFTER completing onboarding.
-// Inline middleware per route because path-wildcard use() doesn't compose
-// reliably in Hono v4 sub-routers.
+// Separate router with only requireAuth() — no role guard.
+// A guest user becomes a host AFTER completing onboarding, so requireRole('host')
+// must NOT apply here. Mounted separately in app.ts at /host/onboarding.
+export const onboardingRouter = new Hono()
+onboardingRouter.use('*', requireAuth())
+
 // /status must be before /:sessionId to avoid param collision
-hostRouter.get(   '/onboarding/status',                       requireAuth(), (c) => onboardingController.getMyStatus(c))
-hostRouter.post(  '/onboarding/start',                        requireAuth(), (c) => onboardingController.start(c))
-hostRouter.get(   '/onboarding/:sessionId',                   requireAuth(), (c) => onboardingController.getSession(c))
-hostRouter.patch( '/onboarding/:sessionId/space',             requireAuth(), (c) => onboardingController.saveSpace(c))
-hostRouter.patch( '/onboarding/:sessionId/amenities',         requireAuth(), (c) => onboardingController.saveAmenities(c))
-hostRouter.post(  '/onboarding/:sessionId/photos',            requireAuth(), (c) => onboardingController.savePhotos(c))
-hostRouter.patch( '/onboarding/:sessionId/details',           requireAuth(), (c) => onboardingController.saveDetails(c))
-hostRouter.patch( '/onboarding/:sessionId/pricing',           requireAuth(), (c) => onboardingController.savePricing(c))
-hostRouter.patch( '/onboarding/:sessionId/availability',      requireAuth(), (c) => onboardingController.saveAvailability(c))
-hostRouter.post(  '/onboarding/:sessionId/submit',            requireAuth(), (c) => onboardingController.submit(c))
+onboardingRouter.get(   '/status',                       (c) => onboardingController.getMyStatus(c))
+onboardingRouter.post(  '/start',                        (c) => onboardingController.start(c))
+onboardingRouter.get(   '/:sessionId',                   (c) => onboardingController.getSession(c))
+onboardingRouter.patch( '/:sessionId/space',             (c) => onboardingController.saveSpace(c))
+onboardingRouter.patch( '/:sessionId/amenities',         (c) => onboardingController.saveAmenities(c))
+onboardingRouter.post(  '/:sessionId/photos',            (c) => onboardingController.savePhotos(c))
+onboardingRouter.patch( '/:sessionId/details',           (c) => onboardingController.saveDetails(c))
+onboardingRouter.patch( '/:sessionId/pricing',           (c) => onboardingController.savePricing(c))
+onboardingRouter.patch( '/:sessionId/availability',      (c) => onboardingController.saveAvailability(c))
+onboardingRouter.post(  '/:sessionId/submit',            (c) => onboardingController.submit(c))

@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthedRequest } from '@/lib/hooks/useAuthedRequest'
 import { useClerk } from '@clerk/nextjs'
+import Image from 'next/image'
 import {
-  ChevronLeft, ChevronRight, Check, Home, MapPin,
+  ChevronLeft, ChevronRight, Check, Home,
   Sparkles, Camera, DollarSign, Calendar, Eye,
   Wifi, ChefHat, Waves, Dumbbell, Flame, Thermometer,
   Wind, Tv, PawPrint, Car, Mountain, TreePine, Key, Shirt, Coffee,
-  Monitor, Utensils, Bath,
+  Monitor, Utensils, Bath, ImagePlus, X, Loader2, Link,
 } from 'lucide-react'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -202,6 +203,13 @@ function StepBar({ current }: { current: number }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+interface UploadingFile {
+  id: string
+  preview: string
+  status: 'uploading' | 'error'
+  error?: string
+}
+
 export default function OnboardingWizardPage({ params }: { params: { sessionId: string } }) {
   const router = useRouter()
   const authedRequest = useAuthedRequest()
@@ -211,6 +219,13 @@ export default function OnboardingWizardPage({ params }: { params: { sessionId: 
   const [form, setForm] = useState<FormState>(DEFAULT_STATE)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Photo upload state
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([])
+  const [showUrlInput, setShowUrlInput] = useState(false)
+  const [urlDraft, setUrlDraft] = useState('')
+  const [photoDragging, setPhotoDragging] = useState(false)
 
   const sessionId = params.sessionId
 
@@ -224,11 +239,72 @@ export default function OnboardingWizardPage({ params }: { params: { sessionId: 
       amenities: f.amenities.includes(slug) ? f.amenities.filter((a) => a !== slug) : [...f.amenities, slug],
     })), [])
 
+  async function uploadPhotoFile(file: File) {
+    const id = `${Date.now()}-${Math.random()}`
+    const preview = URL.createObjectURL(file)
+    setUploadingFiles((prev) => [...prev, { id, preview, status: 'uploading' }])
+
+    try {
+      const signRes = await authedRequest<{
+        signature: string; timestamp: number; cloudName: string; apiKey: string; folder: string
+      }>('/uploads/sign', {
+        method: 'POST',
+        body: JSON.stringify({ folder: 'listings', resourceType: 'image' }),
+      }) as any
+
+      const { signature, timestamp, cloudName, apiKey, folder } = signRes?.data ?? signRes
+
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('api_key', apiKey)
+      fd.append('timestamp', String(timestamp))
+      fd.append('signature', signature)
+      fd.append('folder', folder)
+
+      const cloudRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        { method: 'POST', body: fd }
+      )
+      if (!cloudRes.ok) throw new Error('Cloudinary upload failed')
+      const cloud = await cloudRes.json()
+
+      setForm((f) => ({
+        ...f,
+        photos: [
+          ...f.photos,
+          { publicId: cloud.public_id, url: cloud.secure_url, isPrimary: f.photos.length === 0 },
+        ],
+      }))
+      setUploadingFiles((prev) => prev.filter((u) => u.id !== id))
+      URL.revokeObjectURL(preview)
+    } catch (err: any) {
+      setUploadingFiles((prev) =>
+        prev.map((u) => u.id === id ? { ...u, status: 'error', error: err.message ?? 'Upload failed' } : u)
+      )
+    }
+  }
+
+  function handlePhotoFiles(files: File[]) {
+    const images = files.filter((f) => f.type.startsWith('image/'))
+    images.forEach(uploadPhotoFile)
+  }
+
+  function addUrlPhoto() {
+    const trimmed = urlDraft.trim()
+    if (!trimmed) return
+    setForm((f) => ({
+      ...f,
+      photos: [...f.photos, { publicId: `url_${Date.now()}`, url: trimmed, isPrimary: f.photos.length === 0 }],
+    }))
+    setUrlDraft('')
+    setShowUrlInput(false)
+  }
+
   const canAdvance = (): boolean => {
     switch (step) {
       case 0: return !!form.space.propertyType && !!form.space.roomType && !!form.space.address.city
       case 1: return form.amenities.length >= 1
-      case 2: return form.photos.length >= 1
+      case 2: return form.photos.length >= 1 && uploadingFiles.every((u) => u.status !== 'uploading')
       case 3: return form.details.title.length >= 5 && form.details.description.length >= 20
       case 4: return form.pricing.basePrice >= 100
       default: return true
@@ -433,44 +509,120 @@ export default function OnboardingWizardPage({ params }: { params: { sessionId: 
             <div>
               <h2 className="font-semibold text-navy mb-1">Add photos of your property</h2>
               <p className="text-xs text-muted mb-4">
-                Add at least one photo URL. In production, photos are uploaded via Cloudinary.
+                Upload from your device or paste a URL. At least 1 photo required. The first photo is the cover.
               </p>
-              <div className="space-y-3">
-                {form.photos.map((photo, i) => (
-                  <div key={i} className="flex items-center gap-2">
+
+              {/* Photo grid */}
+              {(form.photos.length > 0 || uploadingFiles.length > 0) && (
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {form.photos.map((photo, i) => (
+                    <div key={photo.publicId} className="relative group aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
+                      <Image src={photo.url} alt="" fill className="object-cover" sizes="150px" unoptimized />
+                      {i === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-navy/80 text-white text-[10px] px-1.5 py-0.5 rounded-md">Cover</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, photos: f.photos.filter((_, j) => j !== i) }))}
+                        className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white items-center justify-center hidden group-hover:flex transition"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {uploadingFiles.map((u) => (
+                    <div key={u.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
+                      <Image src={u.preview} alt="" fill className="object-cover opacity-50" sizes="150px" unoptimized />
+                      {u.status === 'uploading' && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 size={20} className="text-navy animate-spin" />
+                        </div>
+                      )}
+                      {u.status === 'error' && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-50/90 p-2 text-center">
+                          <p className="text-[10px] text-red-600">{u.error ?? 'Failed'}</p>
+                          <button
+                            type="button"
+                            onClick={() => setUploadingFiles((prev) => prev.filter((x) => x.id !== u.id))}
+                            className="mt-1 text-[10px] text-red-500 underline"
+                          >remove</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Drop zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setPhotoDragging(true) }}
+                onDragLeave={() => setPhotoDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setPhotoDragging(false)
+                  handlePhotoFiles(Array.from(e.dataTransfer.files))
+                }}
+                onClick={() => photoInputRef.current?.click()}
+                className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl px-6 py-8 cursor-pointer transition-colors ${
+                  photoDragging ? 'border-gold bg-gold/5' : 'border-gray-200 hover:border-gray-400 bg-gray-50'
+                }`}
+              >
+                <div className="h-11 w-11 rounded-xl bg-navy/5 flex items-center justify-center">
+                  <ImagePlus size={20} className="text-navy/50" />
+                </div>
+                <p className="text-sm font-medium text-navy">Drop photos here or click to browse</p>
+                <p className="text-xs text-muted">JPG, PNG, WEBP up to 10 MB</p>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    handlePhotoFiles(Array.from(e.target.files ?? []))
+                    e.target.value = ''
+                  }}
+                />
+              </div>
+
+              {/* Add by URL */}
+              <div className="mt-3">
+                {!showUrlInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowUrlInput(true)}
+                    className="flex items-center gap-1.5 text-xs text-muted hover:text-navy transition"
+                  >
+                    <Link size={12} /> Add by URL instead
+                  </button>
+                ) : (
+                  <div className="flex gap-2 mt-1">
                     <input
                       type="url"
-                      value={photo.url}
-                      onChange={(e) => {
-                        const updated = [...form.photos]
-                        updated[i] = { ...updated[i], url: e.target.value }
-                        setForm((f) => ({ ...f, photos: updated }))
-                      }}
+                      value={urlDraft}
+                      onChange={(e) => setUrlDraft(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addUrlPhoto()}
                       placeholder="https://images.unsplash.com/…"
-                      className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold"
+                      autoFocus
+                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold"
                     />
                     <button
                       type="button"
-                      onClick={() => setForm((f) => ({ ...f, photos: f.photos.filter((_, j) => j !== i) }))}
-                      className="h-9 w-9 flex items-center justify-center rounded-xl border border-gray-200 text-muted hover:text-red-500 hover:border-red-200 transition"
-                    >
-                      ×
-                    </button>
+                      onClick={addUrlPhoto}
+                      className="px-4 py-2 bg-navy text-white rounded-xl text-sm font-medium hover:bg-navy/90 transition"
+                    >Add</button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowUrlInput(false); setUrlDraft('') }}
+                      className="h-9 w-9 flex items-center justify-center rounded-xl border border-gray-200 text-muted hover:text-red-500 transition"
+                    ><X size={14} /></button>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setForm((f) => ({
-                    ...f,
-                    photos: [...f.photos, { publicId: `photo_${Date.now()}`, url: '', isPrimary: f.photos.length === 0 }],
-                  }))}
-                  className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-muted hover:border-navy hover:text-navy transition flex items-center justify-center gap-2"
-                >
-                  <Camera className="h-4 w-4" />
-                  Add photo URL
-                </button>
+                )}
               </div>
-              <p className="text-xs text-muted mt-3">The first photo becomes the cover image.</p>
+
+              {form.photos.length > 0 && (
+                <p className="text-xs text-muted mt-3">{form.photos.length} photo{form.photos.length !== 1 ? 's' : ''} added</p>
+              )}
             </div>
           )}
 

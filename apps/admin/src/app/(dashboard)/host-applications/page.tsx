@@ -138,15 +138,21 @@ export default async function HostApplicationsPage({ searchParams }: PageProps) 
                       : '—'}
                   </td>
                   <td className="px-6 py-4">
-                    {app.status === 'submitted' ? (
-                      <HostApplicationActions
-                        applicationId={app.id}
-                        onApprove={handleApprove}
-                        onReject={handleReject}
-                      />
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">—</span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/host-applications/${app.id}`}
+                        className="text-xs font-medium text-gray-700 hover:text-gray-900 underline underline-offset-2"
+                      >
+                        Review →
+                      </Link>
+                      {app.status === 'submitted' && (
+                        <HostApplicationActions
+                          applicationId={app.id}
+                          onApprove={handleApprove}
+                          onReject={handleReject}
+                        />
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

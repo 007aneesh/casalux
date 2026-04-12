@@ -244,6 +244,18 @@ export class OnboardingController {
     }
   }
 
+  /** GET /admin/host-applications/:sessionId */
+  async getApplication(c: Context): Promise<Response> {
+    try {
+      const sessionId = c.req.param('sessionId') as string
+      const application = await this.service.getApplication(sessionId)
+      if (!application) return c.json({ error: 'Not found' }, 404)
+      return c.json({ success: true, data: application })
+    } catch (err) {
+      return handleOnboardingError(err, c)
+    }
+  }
+
   /** POST /admin/host-applications/:sessionId/approve */
   async approve(c: Context): Promise<Response> {
     try {

@@ -63,6 +63,7 @@ adminRouter.delete('/users/:id',                (c) => adminController.deleteUse
 
 // ─── Host application review ─────────────────────────────────────────────────
 adminRouter.get( '/host-applications',                    (c) => onboardingController.listApplications(c))
+adminRouter.get( '/host-applications/:sessionId',         (c) => onboardingController.getApplication(c))
 adminRouter.post('/host-applications/:sessionId/approve', (c) => onboardingController.approve(c))
 adminRouter.post('/host-applications/:sessionId/reject',  (c) => onboardingController.reject(c))
 

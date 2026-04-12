@@ -11,6 +11,8 @@ const isAuthRequired = createRouteMatcher([
   '/listings/(.*)/book(.*)',
 ])
 
+const isAdminRoute = createRouteMatcher(['/admin(.*)'])
+
 // Host or admin role required — non-hosts get redirected to /become-a-host
 // Note: /host/onboarding and /host/application-pending are intentionally excluded
 // (accessible before the role is promoted to 'host')
@@ -22,6 +24,17 @@ const isHostRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, req) => {
+  // Admin-only routes: check role, redirect non-admins
+  if (isAdminRoute(req)) {
+    const { userId, sessionClaims } = await auth()
+    if (!userId) return NextResponse.redirect(new URL('/', req.url))
+    const role = (sessionClaims?.publicMetadata as Record<string, unknown>)?.role
+    if (role !== 'admin' && role !== 'super_admin') {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+    return NextResponse.next()
+  }
+
   // Host-only routes: check role, redirect non-hosts
   if (isHostRoute(req)) {
     const { userId, sessionClaims } = await auth()

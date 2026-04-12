@@ -38,7 +38,10 @@ export class OnboardingService {
 
   // ── Step helpers ────────────────────────────────────────────────────────────
 
-  private async assertOwnership(sessionId: string, clerkId: string) {
+  private async assertOwnership(
+    sessionId: string,
+    clerkId: string,
+  ): Promise<NonNullable<Awaited<ReturnType<OnboardingRepository['findByIdForUser']>>>> {
     const session = await this.repo.findByIdForUser(sessionId, clerkId)
     if (!session) throw new Error('SESSION_NOT_FOUND')
     if (session.status !== 'in_progress') throw new Error('SESSION_ALREADY_SUBMITTED')
@@ -48,7 +51,7 @@ export class OnboardingService {
   // ── Public API ──────────────────────────────────────────────────────────────
 
   /** Step 1 — POST /host/onboarding/start */
-  async start(clerkId: string) {
+  async start(clerkId: string): Promise<Awaited<ReturnType<OnboardingRepository['create']>>> {
     // Check for any non-rejected, non-in_progress application first
     const latest = await this.repo.findLatestByUser(clerkId)
     if (latest && latest.status === 'submitted') throw new Error('APPLICATION_UNDER_REVIEW')
@@ -62,7 +65,7 @@ export class OnboardingService {
   }
 
   /** GET /host/onboarding/status — user's latest application status */
-  async getMyStatus(clerkId: string) {
+  async getMyStatus(clerkId: string): Promise<any> {
     const latest = await this.repo.findLatestByUser(clerkId)
     if (!latest) return { status: 'none' as const, sessionId: null, submittedAt: null, rejectionReason: null }
     return {
@@ -74,7 +77,10 @@ export class OnboardingService {
   }
 
   /** GET /host/onboarding/:sessionId — check current progress */
-  async getSession(sessionId: string, clerkId: string) {
+  async getSession(
+    sessionId: string,
+    clerkId: string,
+  ): Promise<NonNullable<Awaited<ReturnType<OnboardingRepository['findByIdForUser']>>>> {
     const session = await this.repo.findByIdForUser(sessionId, clerkId)
     if (!session) throw new Error('SESSION_NOT_FOUND')
     return session
@@ -83,26 +89,26 @@ export class OnboardingService {
   /** Step 2 — PATCH /host/onboarding/:sessionId/space */
   async saveSpace(sessionId: string, clerkId: string, data: Pick<OnboardingSessionData,
     'propertyType' | 'roomType' | 'maxGuests' | 'bedrooms' | 'beds' | 'baths' | 'address' | 'lat' | 'lng'
-  >) {
+  >): Promise<Awaited<ReturnType<OnboardingRepository['updateStep']>>> {
     await this.assertOwnership(sessionId, clerkId)
     return this.repo.updateStep(sessionId, data)
   }
 
   /** Step 3 — PATCH /host/onboarding/:sessionId/amenities */
-  async saveAmenities(sessionId: string, clerkId: string, amenities: string[]) {
+  async saveAmenities(sessionId: string, clerkId: string, amenities: string[]): Promise<Awaited<ReturnType<OnboardingRepository['updateStep']>>> {
     await this.assertOwnership(sessionId, clerkId)
     return this.repo.updateStep(sessionId, { amenities })
   }
 
   /** Step 4 — POST /host/onboarding/:sessionId/photos */
-  async savePhotos(sessionId: string, clerkId: string, photos: OnboardingSessionData['photos']) {
+  async savePhotos(sessionId: string, clerkId: string, photos: OnboardingSessionData['photos']): Promise<Awaited<ReturnType<OnboardingRepository['updateStep']>>> {
     await this.assertOwnership(sessionId, clerkId)
     if (!photos || photos.length === 0) throw new Error('At least one photo is required')
     return this.repo.updateStep(sessionId, { photos })
   }
 
   /** Step 5 — PATCH /host/onboarding/:sessionId/details */
-  async saveDetails(sessionId: string, clerkId: string, data: Pick<OnboardingSessionData, 'title' | 'description'>) {
+  async saveDetails(sessionId: string, clerkId: string, data: Pick<OnboardingSessionData, 'title' | 'description'>): Promise<Awaited<ReturnType<OnboardingRepository['updateStep']>>> {
     await this.assertOwnership(sessionId, clerkId)
     return this.repo.updateStep(sessionId, data)
   }
@@ -110,7 +116,7 @@ export class OnboardingService {
   /** Step 6 — PATCH /host/onboarding/:sessionId/pricing */
   async savePricing(sessionId: string, clerkId: string, data: Pick<OnboardingSessionData,
     'basePrice' | 'currency' | 'cleaningFee' | 'cancellationPolicy'
-  >) {
+  >): Promise<Awaited<ReturnType<OnboardingRepository['updateStep']>>> {
     await this.assertOwnership(sessionId, clerkId)
     if (data.basePrice !== undefined && data.basePrice < 100) {
       throw new Error('Base price must be at least ₹1 (100 paise)')
@@ -121,7 +127,7 @@ export class OnboardingService {
   /** Step 7 — PATCH /host/onboarding/:sessionId/availability */
   async saveAvailability(sessionId: string, clerkId: string, data: Pick<OnboardingSessionData,
     'instantBook' | 'checkInTime' | 'checkOutTime' | 'minNights' | 'maxNights' | 'blockedDates'
-  >) {
+  >): Promise<Awaited<ReturnType<OnboardingRepository['updateStep']>>> {
     await this.assertOwnership(sessionId, clerkId)
     return this.repo.updateStep(sessionId, data)
   }
@@ -157,7 +163,7 @@ export class OnboardingService {
 
   // ── Admin operations ────────────────────────────────────────────────────────
 
-  async approve(sessionId: string, reviewerClerkId: string) {
+  async approve(sessionId: string, reviewerClerkId: string): Promise<Awaited<ReturnType<OnboardingRepository['findById']>>> {
     const session = await this.repo.findById(sessionId)
     if (!session) throw new Error('SESSION_NOT_FOUND')
     if (session.status !== 'submitted') throw new Error('Application is not in submitted state')
@@ -182,7 +188,7 @@ export class OnboardingService {
     return this.repo.findById(sessionId)
   }
 
-  async reject(sessionId: string, reviewerClerkId: string, reason: string) {
+  async reject(sessionId: string, reviewerClerkId: string, reason: string): Promise<Awaited<ReturnType<OnboardingRepository['findById']>>> {
     const session = await this.repo.findById(sessionId)
     if (!session) throw new Error('SESSION_NOT_FOUND')
     if (session.status !== 'submitted') throw new Error('Application is not in submitted state')
@@ -197,8 +203,12 @@ export class OnboardingService {
     return this.repo.findById(sessionId)
   }
 
-  async listSubmitted(status?: string) {
+  async listSubmitted(status?: string): Promise<Awaited<ReturnType<OnboardingRepository['findAllSubmitted']>>> {
     return this.repo.findAllSubmitted(status)
+  }
+
+  async getApplication(sessionId: string): Promise<Awaited<ReturnType<OnboardingRepository['findByIdWithUser']>>> {
+    return this.repo.findByIdWithUser(sessionId)
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────

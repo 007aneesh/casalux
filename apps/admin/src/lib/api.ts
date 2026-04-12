@@ -354,9 +354,63 @@ export interface AdminHostApplication {
   user: { id: string; firstName: string; lastName: string; email: string }
 }
 
+export interface AdminHostApplicationDetail {
+  id:              string
+  status:          string
+  submittedAt:     string | null
+  reviewedAt:      string | null
+  reviewedBy:      string | null
+  rejectionReason: string | null
+  createdAt:       string
+  sessionData: {
+    // Space
+    propertyType?: string
+    roomType?:     string
+    maxGuests?:    number
+    bedrooms?:     number
+    beds?:         number
+    baths?:        number
+    address?:      Record<string, string>
+    // Amenities
+    amenities?: string[]
+    // Photos
+    photos?: Array<{ publicId: string; url: string; isPrimary: boolean }>
+    // Details
+    title?:       string
+    description?: string
+    // Pricing
+    basePrice?:          number
+    currency?:           string
+    cleaningFee?:        number
+    cancellationPolicy?: string
+    // Availability
+    instantBook?:  boolean
+    checkInTime?:  string
+    checkOutTime?: string
+    minNights?:    number
+    maxNights?:    number
+  }
+  user: {
+    id:              string
+    clerkId:         string
+    firstName:       string
+    lastName:        string
+    email:           string
+    profileImageUrl: string | null
+    createdAt:       string
+  }
+}
+
 export function getHostApplications(status?: string) {
   const qs = status ? `?status=${encodeURIComponent(status)}` : ''
   return adminFetch<{ applications: AdminHostApplication[] }>(`/host-applications${qs}`)
+}
+
+export async function getHostApplication(sessionId: string) {
+  const res = await adminFetch<{ success: boolean; data: AdminHostApplicationDetail }>(
+    `/host-applications/${sessionId}`
+  )
+  return res.data
 }
 
 export function approveHostApplication(sessionId: string) {

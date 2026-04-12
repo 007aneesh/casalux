@@ -54,6 +54,23 @@ export class OnboardingRepository {
     })
   }
 
+  /** Find a single application with its user — used by admin detail view */
+  async findByIdWithUser(sessionId: string) {
+    return prisma.hostApplication.findUnique({
+      where:   { id: sessionId },
+      include: {
+        user: {
+          select: {
+            id: true, clerkId: true,
+            firstName: true, lastName: true,
+            email: true, profileImageUrl: true,
+            createdAt: true,
+          },
+        },
+      },
+    })
+  }
+
   async findActiveByUser(clerkId: string) {
     return prisma.hostApplication.findFirst({
       where: {
@@ -150,6 +167,15 @@ export class OnboardingRepository {
         rejectionReason: reason,
         reviewedBy:      reviewerClerkId,
         reviewedAt:      new Date(),
+      },
+    })
+  }
+
+  async findByIdWithUser(sessionId: string) {
+    return prisma.hostApplication.findUnique({
+      where: { id: sessionId },
+      include: {
+        user: { select: { id: true, clerkId: true, firstName: true, lastName: true, email: true, profileImageUrl: true } },
       },
     })
   }

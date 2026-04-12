@@ -10,7 +10,7 @@ import { bookingsRouter } from './routes/bookings.js'
 import { bookingRequestsRouter } from './routes/booking-requests.js'
 import { uploadsRouter } from './routes/uploads.js'
 import { webhooksRouter } from './routes/webhooks.js'
-import { hostRouter } from './routes/host.js'
+import { hostRouter, onboardingRouter } from './routes/host.js'
 import { adminRouter } from './routes/admin.js'
 import { usersRouter } from './routes/users.js'
 import { locationsRouter } from './routes/locations.js'
@@ -79,6 +79,7 @@ v1.route('/bookings', bookingsRouter)
 v1.route('/booking-requests', bookingRequestsRouter)
 v1.route('/uploads', uploadsRouter)
 v1.route('/webhooks', webhooksRouter)
+v1.route('/host/onboarding', onboardingRouter)
 v1.route('/host', hostRouter)
 v1.route('/admin', adminRouter)
 v1.route('/users', usersRouter)

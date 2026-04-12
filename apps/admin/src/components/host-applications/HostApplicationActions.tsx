@@ -7,9 +7,11 @@ interface Props {
   applicationId: string
   onApprove: (id: string) => Promise<void>
   onReject:  (id: string, reason: string) => Promise<void>
+  size?:     'sm' | 'lg'
 }
 
-export default function HostApplicationActions({ applicationId, onApprove, onReject }: Props) {
+export default function HostApplicationActions({ applicationId, onApprove, onReject, size = 'sm' }: Props) {
+  const isLg = size === 'lg'
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [reason, setReason]                   = useState('')
   const [toast, setToast]                     = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
@@ -61,17 +63,19 @@ export default function HostApplicationActions({ applicationId, onApprove, onRej
         <button
           onClick={handleApprove}
           disabled={pending}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 text-xs font-medium hover:bg-green-100 transition-colors disabled:opacity-50"
+          className={`flex items-center gap-1.5 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors disabled:opacity-50
+            ${isLg ? 'px-5 py-2.5 text-sm' : 'px-3 py-1.5 text-xs'}`}
         >
-          <CheckCircle className="h-3.5 w-3.5" />
+          <CheckCircle className={isLg ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
           Approve
         </button>
         <button
           onClick={() => setShowRejectModal(true)}
           disabled={pending}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
+          className={`flex items-center gap-1.5 rounded-lg bg-white border border-red-200 text-red-600 font-medium hover:bg-red-50 transition-colors disabled:opacity-50
+            ${isLg ? 'px-5 py-2.5 text-sm' : 'px-3 py-1.5 text-xs'}`}
         >
-          <XCircle className="h-3.5 w-3.5" />
+          <XCircle className={isLg ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
           Reject
         </button>
       </div>

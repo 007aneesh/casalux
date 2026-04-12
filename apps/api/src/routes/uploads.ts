@@ -18,15 +18,14 @@ import { storageService, cacheService, queueService } from '../container.js'
 
 export const uploadsRouter = new Hono()
 
-uploadsRouter.use('*', requireAuth(), requireRole('host'))
-
 // ─── POST /api/v1/uploads/sign ────────────────────────────────────────────────
 const signSchema = z.object({
   folder:       z.enum(['listings', 'hosts', 'avatars']),
   resourceType: z.enum(['image', 'video', 'raw']).default('image'),
 })
 
-uploadsRouter.post('/sign', async (c) => {
+// Sign is auth-only — guests need it during onboarding before they become a host
+uploadsRouter.post('/sign', requireAuth(), async (c) => {
   const body   = await c.req.json()
   const parsed = signSchema.safeParse(body)
   if (!parsed.success) {
@@ -79,7 +78,8 @@ const confirmSchema = z.object({
   order:        z.number().int().min(0).optional(),
 })
 
-uploadsRouter.post('/confirm', async (c) => {
+// Confirm requires host role — stores to DB and is only called from host listing edit flows
+uploadsRouter.post('/confirm', requireAuth(), requireRole('host'), async (c) => {
   const body   = await c.req.json()
   const parsed = confirmSchema.safeParse(body)
   if (!parsed.success) {

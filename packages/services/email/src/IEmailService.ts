@@ -20,6 +20,7 @@ export type EmailTemplate =
   | 'payment-window-expired'
   | 'pre-approval'
   | 'welcome'
+  | 'host-application-submitted'
   | 'host-application-approved'
   | 'host-application-rejected'
 
