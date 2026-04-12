@@ -25,7 +25,8 @@ async function getListing(id: string): Promise<Listing | null> {
       next: { revalidate: 600 },
     })
     return res.success ? res.data : null
-  } catch {
+  } catch (err) {
+    console.error(`[getListing] failed for id="${id}":`, err)
     return null
   }
 }
