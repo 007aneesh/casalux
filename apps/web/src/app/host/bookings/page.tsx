@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { useHostBookingRequests, useHostActions } from '@/lib/hooks/useHost'
+import { useHostBookingRequests, useHostBookings, useHostActions } from '@/lib/hooks/useHost'
 import { Skeleton } from '@casalux/ui'
 import { formatPrice, formatDateShort } from '@/lib/utils'
-import { CheckCircle2, XCircle, Clock, BookOpen } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, BookOpen, LogIn, LogOut } from 'lucide-react'
 
 type FilterTab = 'pending' | 'approved' | 'all'
 
@@ -182,16 +182,103 @@ function BookingRequestCard({ req, isPending, onApprove, onDecline }: {
   )
 }
 
+function BookingCard({ booking, onCheckIn, onCheckOut }: {
+  booking: any
+  onCheckIn?: () => void
+  onCheckOut?: () => void
+}) {
+  const nights = Math.round(
+    (new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / 86400000
+  )
+  const status = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.confirmed
+  const canCheckIn  = booking.status === 'confirmed'
+  const canCheckOut = booking.status === 'checked_in'
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-card overflow-hidden">
+      <div className="p-4">
+        <div className="flex gap-4">
+          <div className="relative w-20 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+            {booking.listing?.images?.[0]?.url ? (
+              <Image src={booking.listing.images[0].url} alt={booking.listing.title} fill className="object-cover" sizes="80px" />
+            ) : (
+              <div className="w-full h-full bg-navy/5" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold text-sm text-navy truncate">{booking.listing?.title}</p>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${status.bg} ${status.color}`}>
+                {status.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              {booking.guest?.profileImageUrl ? (
+                <Image src={booking.guest.profileImageUrl} alt={booking.guest.firstName} width={20} height={20} className="rounded-full" />
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-navy/10 flex items-center justify-center text-xs font-bold text-navy">
+                  {booking.guest?.firstName?.charAt(0)}
+                </div>
+              )}
+              <p className="text-xs text-muted">
+                {booking.guest?.firstName} {booking.guest?.lastName} · {booking.guests ?? 1} guest{(booking.guests ?? 1) !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-muted">
+                {formatDateShort(booking.checkIn)} – {formatDateShort(booking.checkOut)} · {nights}n
+              </p>
+              <p className="text-sm font-semibold text-gold">{formatPrice(booking.totalAmount)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {(canCheckIn || canCheckOut) && (
+        <div className="flex border-t border-gray-100">
+          {canCheckIn && (
+            <button
+              onClick={onCheckIn}
+              className="flex-1 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <LogIn size={14} />
+              Mark Checked In
+            </button>
+          )}
+          {canCheckOut && (
+            <button
+              onClick={onCheckOut}
+              className="flex-1 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <LogOut size={14} />
+              Mark Checked Out
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function HostBookingsPage() {
   const [tab, setTab] = useState<FilterTab>('pending')
-  const { requests, isLoading, mutate } = useHostBookingRequests()
-  const { approveRequest, declineRequest } = useHostActions()
+  const { requests, isLoading: requestsLoading, mutate: mutateRequests } = useHostBookingRequests()
+  const { bookings, isLoading: bookingsLoading, mutate: mutateBookings } = useHostBookings()
+  const { approveRequest, declineRequest, markCheckIn, markCheckOut } = useHostActions()
   const [decliningId, setDecliningId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  const filtered = requests.filter((r: any) => {
+  const isLoading = requestsLoading || bookingsLoading
+
+  const filteredRequests = requests.filter((r: any) => {
     if (tab === 'pending') return r.status === 'pending' || r.status === 'pre_approved'
-    if (tab === 'approved') return r.status === 'approved' || r.status === 'confirmed' || r.status === 'checked_in' || r.status === 'checked_out'
+    if (tab === 'approved') return r.status === 'approved'
+    return true
+  })
+
+  const filteredBookings = bookings.filter((b: any) => {
+    if (tab === 'pending') return false
+    if (tab === 'approved') return ['confirmed', 'checked_in', 'checked_out'].includes(b.status)
     return true
   })
 
@@ -207,7 +294,7 @@ export default function HostBookingsPage() {
     setActionLoading(id)
     try {
       await approveRequest(id)
-      await mutate()
+      await mutateRequests()
     } finally {
       setActionLoading(null)
     }
@@ -220,7 +307,27 @@ export default function HostBookingsPage() {
     setActionLoading(id)
     try {
       await declineRequest(id, reason, message)
-      await mutate()
+      await mutateRequests()
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleCheckIn = async (id: string) => {
+    setActionLoading(id)
+    try {
+      await markCheckIn(id)
+      await mutateBookings()
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleCheckOut = async (id: string) => {
+    setActionLoading(id)
+    try {
+      await markCheckOut(id)
+      await mutateBookings()
     } finally {
       setActionLoading(null)
     }
@@ -266,7 +373,7 @@ export default function HostBookingsPage() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filteredRequests.length === 0 && filteredBookings.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
             <BookOpen size={32} className="mx-auto mb-2 text-navy/20" />
             <p className="font-medium text-navy">
@@ -278,13 +385,22 @@ export default function HostBookingsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filtered.map((req: any) => (
+            {filteredRequests.map((req: any) => (
               <div key={req.id} className={actionLoading === req.id ? 'opacity-50 pointer-events-none' : ''}>
                 <BookingRequestCard
                   req={req}
                   isPending={req.status === 'pending'}
                   onApprove={() => handleApprove(req.id)}
                   onDecline={() => setDecliningId(req.id)}
+                />
+              </div>
+            ))}
+            {filteredBookings.map((booking: any) => (
+              <div key={booking.id} className={actionLoading === booking.id ? 'opacity-50 pointer-events-none' : ''}>
+                <BookingCard
+                  booking={booking}
+                  onCheckIn={() => handleCheckIn(booking.id)}
+                  onCheckOut={() => handleCheckOut(booking.id)}
                 />
               </div>
             ))}

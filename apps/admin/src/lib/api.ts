@@ -238,6 +238,13 @@ export function overrideBookingPayout(id: string, payoutStatus: string) {
   })
 }
 
+export function overrideBookingStatus(id: string, status: string, reason?: string) {
+  return adminFetch<{ success: boolean }>(`/bookings/${id}/status`, {
+    method: 'PATCH',
+    body:   JSON.stringify({ status, reason }),
+  })
+}
+
 export function setBookingDispute(id: string, disputed: boolean, reason?: string) {
   return adminFetch<{ success: boolean }>(`/bookings/${id}/dispute`, {
     method: 'PATCH',

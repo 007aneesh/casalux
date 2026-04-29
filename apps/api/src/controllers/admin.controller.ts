@@ -369,6 +369,48 @@ export class AdminController {
     }
   }
 
+  /** PATCH /admin/bookings/:id/status — body: { status: string, reason?: string } */
+  async overrideStatus(c: Context): Promise<Response> {
+    const VALID_STATUSES = [
+      'pending_payment', 'confirmed', 'checked_in', 'checked_out',
+      'cancelled_by_admin', 'disputed', 'completed',
+    ]
+    try {
+      const id       = c.req.param('id') as string
+      const authUser = c.get('authUser')
+      const body     = await c.req.json() as { status: string; reason?: string }
+
+      if (!VALID_STATUSES.includes(body.status)) {
+        return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: `status must be one of: ${VALID_STATUSES.join(', ')}` } }, 400)
+      }
+
+      const booking = await db.booking.findUnique({ where: { id }, select: { id: true, status: true } })
+      if (!booking) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404)
+
+      await db.booking.update({
+        where: { id },
+        data:  {
+          status:             body.status as never,
+          ...(body.reason ? { cancellationReason: body.reason.trim() } : {}),
+        },
+      })
+      await logAudit({
+        actorClerkId: authUser.clerkId,
+        action:       'booking.status_override',
+        entityType:   'booking',
+        entityId:     id,
+        before:       { status: booking.status },
+        after:        { status: body.status, reason: body.reason },
+        c,
+      })
+
+      return c.json({ success: true })
+    } catch (err) {
+      console.error('[AdminController.overrideStatus]', err)
+      return c.json({ error: 'Internal server error' }, 500)
+    }
+  }
+
   /** GET /admin/users?page=1&role= */
   async getUsers(c: Context): Promise<Response> {
     try {

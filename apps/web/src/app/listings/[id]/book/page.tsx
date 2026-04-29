@@ -74,8 +74,17 @@ export default function BookingCheckoutPage({ params }: PageProps) {
           return
         }
 
-        if ((res.data.providerPayload as Record<string, unknown>).checkoutUrl) {
-          window.location.href = String((res.data.providerPayload as Record<string, unknown>).checkoutUrl)
+        const payload = res.data.providerPayload as Record<string, unknown>
+        if (payload.checkoutUrl) {
+          window.location.href = String(payload.checkoutUrl)
+        } else if (payload.clientSecret) {
+          const qs = new URLSearchParams({
+            clientSecret: String(payload.clientSecret),
+            bookingId:    res.data.bookingId,
+            amount:       String(res.data.pricingBreakdown?.total ?? 0),
+            currency:     String(res.data.pricingBreakdown?.currency ?? 'INR'),
+          })
+          router.push(`/bookings/${res.data.bookingId}/pay?${qs}`)
         } else {
           router.push(`/bookings/${res.data.bookingId}/confirmation`)
         }

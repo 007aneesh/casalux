@@ -51,6 +51,7 @@ adminRouter.patch( '/bookings/:id/cancel',   (c) => adminController.cancelBookin
 adminRouter.patch( '/bookings/:id/refund',   (c) => adminController.overrideRefund(c))
 adminRouter.patch( '/bookings/:id/payout',   (c) => adminController.overridePayout(c))
 adminRouter.patch( '/bookings/:id/dispute',  (c) => adminController.setDispute(c))
+adminRouter.patch( '/bookings/:id/status',   (c) => adminController.overrideStatus(c))
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 adminRouter.get(   '/users',                    (c) => adminController.getUsers(c))

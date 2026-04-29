@@ -286,6 +286,24 @@ export class BookingService {
     return { bookingId, refundAmount, hostCancellationPenalty }
   }
 
+  // ─── Booking: check-in / check-out ──────────────────────────────────────
+
+  async markCheckIn(bookingId: string, hostId: string) {
+    const booking = await this.repo.findBookingByIdForHost(bookingId, hostId)
+    if (!booking) throw new Error('NOT_FOUND')
+    if (booking.status !== 'confirmed') throw new Error('INVALID_STATUS_TRANSITION')
+    await this.repo.updateBookingStatus(bookingId, 'checked_in', {})
+    return { bookingId, status: 'checked_in' }
+  }
+
+  async markCheckOut(bookingId: string, hostId: string) {
+    const booking = await this.repo.findBookingByIdForHost(bookingId, hostId)
+    if (!booking) throw new Error('NOT_FOUND')
+    if (booking.status !== 'checked_in') throw new Error('INVALID_STATUS_TRANSITION')
+    await this.repo.updateBookingStatus(bookingId, 'checked_out', {})
+    return { bookingId, status: 'checked_out' }
+  }
+
   // ─── Booking Request: create ─────────────────────────────────────────────
 
   async createBookingRequest(guestId: string, input: {

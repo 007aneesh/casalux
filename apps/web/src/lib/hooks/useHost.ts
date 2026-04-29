@@ -77,6 +77,18 @@ export function useHostBookingRequests() {
   return { requests: data?.data ?? [], isLoading, error, mutate }
 }
 
+export function useHostBookings(status?: string) {
+  const { isSignedIn } = useAuth()
+  const authedRequest = useAuthedRequest()
+  const key = isSignedIn ? `/host/bookings${status ? `?status=${status}` : ''}` : null
+  const { data, isLoading, error, mutate } = useSWR(
+    key,
+    (path: string) => authedRequest<any[]>(path),
+    { refreshInterval: 30000 }
+  )
+  return { bookings: data?.data ?? [], isLoading, error, mutate }
+}
+
 export function useHostCalendar(listingId: string | null, year: number, month: number) {
   const { isSignedIn } = useAuth()
   const authedRequest = useAuthedRequest()
@@ -123,5 +135,17 @@ export function useHostActions() {
     mutate('/host/stats')
   }
 
-  return { approveRequest, declineRequest, toggleListingStatus, deleteListing }
+  async function markCheckIn(bookingId: string) {
+    await authedRequest(`/host/bookings/${bookingId}/check-in`, { method: 'POST' })
+    mutate('/host/bookings')
+    mutate('/host/stats')
+  }
+
+  async function markCheckOut(bookingId: string) {
+    await authedRequest(`/host/bookings/${bookingId}/check-out`, { method: 'POST' })
+    mutate('/host/bookings')
+    mutate('/host/stats')
+  }
+
+  return { approveRequest, declineRequest, toggleListingStatus, deleteListing, markCheckIn, markCheckOut }
 }

@@ -12,7 +12,7 @@ import type { BookingService } from '../services/booking.service.js'
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
 
 const initiateBookingSchema = z.object({
-  listingId:          z.string().cuid(),
+  listingId:          z.string().min(1),
   checkIn:            z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkOut:           z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   guests:             z.number().int().min(1),
@@ -25,7 +25,7 @@ const cancelBookingSchema = z.object({
 })
 
 const createRequestSchema = z.object({
-  listingId:    z.string().cuid(),
+  listingId:    z.string().min(1),
   checkIn:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkOut:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   guests:       z.number().int().min(1),
@@ -42,8 +42,8 @@ const declineRequestSchema = z.object({
 })
 
 const preApproveSchema = z.object({
-  guestId:   z.string().cuid(),
-  listingId: z.string().cuid(),
+  guestId:   z.string().min(1),
+  listingId: z.string().min(1),
   checkIn:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkOut:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   message:   z.string().max(1000).optional(),
@@ -324,6 +324,38 @@ export class BookingController {
     }
   }
 
+  // POST /api/v1/host/bookings/:id/check-in
+  async checkInBooking(c: Context) {
+    try {
+      const authUser      = c.get('authUser')
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
+      const id     = c.req.param('id') as string
+      const result = await this.service.markCheckIn(id, hostProfileId)
+      return c.json({ success: true, data: result })
+    } catch (err) {
+      return this.handleBookingError(c, err)
+    }
+  }
+
+  // POST /api/v1/host/bookings/:id/check-out
+  async checkOutBooking(c: Context) {
+    try {
+      const authUser      = c.get('authUser')
+      const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
+      if (!hostProfileId) {
+        return c.json({ success: false, error: { code: 'NO_HOST_PROFILE', message: 'Host profile not found' } }, 404)
+      }
+      const id     = c.req.param('id') as string
+      const result = await this.service.markCheckOut(id, hostProfileId)
+      return c.json({ success: true, data: result })
+    } catch (err) {
+      return this.handleBookingError(c, err)
+    }
+  }
+
   // ─── Host: Booking Request management ────────────────────────────────────
 
   // GET /api/v1/host/booking-requests
@@ -479,6 +511,7 @@ export class BookingController {
 
     const map: Record<string, [string, string, number]> = {
       LISTING_NOT_FOUND:      ['NOT_FOUND',            'Listing not found',                          404],
+      GUEST_NOT_FOUND:        ['NOT_FOUND',            'Guest account not found',                    404],
       NOT_FOUND:              ['NOT_FOUND',            'Resource not found',                         404],
       NOT_INSTANT_BOOK:       ['NOT_INSTANT_BOOK',     'This listing uses Request-to-Book',          400],
       USE_INSTANT_BOOK:       ['USE_INSTANT_BOOK',     'This listing supports Instant Book',         400],
@@ -490,7 +523,8 @@ export class BookingController {
       GUEST_UNVERIFIED:       ['GUEST_UNVERIFIED',     'Verified ID is required to book this listing', 403],
       GUEST_NO_PHOTO:         ['GUEST_NO_PHOTO',       'A profile photo is required to book this listing', 403],
       GUEST_NO_REVIEWS:       ['GUEST_NO_REVIEWS',     'Positive review history is required to book this listing', 403],
-      NOT_CANCELLABLE:        ['NOT_CANCELLABLE',      'This booking cannot be cancelled in its current state', 400],
+      NOT_CANCELLABLE:            ['NOT_CANCELLABLE',            'This booking cannot be cancelled in its current state', 400],
+      INVALID_STATUS_TRANSITION:  ['INVALID_STATUS_TRANSITION',  'Booking is not in the required status for this action', 400],
       REQUEST_NOT_PENDING:    ['REQUEST_NOT_PENDING',  'Request is no longer pending',               400],
       REQUEST_EXPIRED:        ['REQUEST_EXPIRED',      'This request has expired',                   400],
       REQUEST_NOT_APPROVED:   ['REQUEST_NOT_APPROVED', 'Request has not been approved',              400],

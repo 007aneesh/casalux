@@ -58,9 +58,11 @@ hostRouter.patch('/listings/:id/status',              (c) => controller.updateSt
 hostRouter.put('/listings/:id/availability',          (c) => controller.updateAvailability(c))
 
 // ─── Booking management ───────────────────────────────────────────────────────
-hostRouter.get('/bookings',            (c) => bookingController.getHostBookings(c))
-hostRouter.post('/bookings/:id/cancel', (c) => bookingController.cancelBookingAsHost(c))
-hostRouter.get('/bookings/:id',        (c) => bookingController.getHostBookingById(c))
+hostRouter.get('/bookings',                    (c) => bookingController.getHostBookings(c))
+hostRouter.post('/bookings/:id/check-in',      (c) => bookingController.checkInBooking(c))
+hostRouter.post('/bookings/:id/check-out',     (c) => bookingController.checkOutBooking(c))
+hostRouter.post('/bookings/:id/cancel',        (c) => bookingController.cancelBookingAsHost(c))
+hostRouter.get('/bookings/:id',                (c) => bookingController.getHostBookingById(c))
 
 // ─── Booking Request management ───────────────────────────────────────────────
 // Static paths BEFORE /:id to avoid param collision

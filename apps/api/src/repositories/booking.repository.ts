@@ -30,6 +30,21 @@ const BOOKING_INCLUDE = {
       verificationStatus: true,
     },
   },
+  review: {
+    select: {
+      id: true,
+      rating: true,
+      comment: true,
+      cleanlinessRating: true,
+      accuracyRating: true,
+      locationRating: true,
+      checkInRating: true,
+      valueRating: true,
+      hostResponse: true,
+      hostRespondedAt: true,
+      createdAt: true,
+    },
+  },
 } as const
 
 const BOOKING_REQUEST_INCLUDE = {
@@ -359,7 +374,7 @@ export class BookingRepository {
 
   async findGuestById(guestId: string) {
     return db.user.findUnique({
-      where:  { id: guestId },
+      where:  { clerkId: guestId },
       select: {
         id: true,
         verificationStatus: true,

@@ -10,19 +10,26 @@ interface Props {
   refundStatus: string | null
   payoutStatus: string
   // Server actions
-  onCancel:         (reason: string, refundAmount?: number) => Promise<void>
-  onOverrideRefund: (refundAmount: number, refundStatus: string) => Promise<void>
-  onOverridePayout: (payoutStatus: string) => Promise<void>
-  onDispute:        (disputed: boolean, reason?: string) => Promise<void>
+  onCancel:           (reason: string, refundAmount?: number) => Promise<void>
+  onOverrideRefund:   (refundAmount: number, refundStatus: string) => Promise<void>
+  onOverridePayout:   (payoutStatus: string) => Promise<void>
+  onOverrideStatus:   (status: string, reason?: string) => Promise<void>
+  onDispute:          (disputed: boolean, reason?: string) => Promise<void>
 }
 
 type Modal =
   | { type: 'cancel' }
   | { type: 'refund' }
   | { type: 'payout' }
+  | { type: 'status' }
   | { type: 'dispute' }
   | { type: 'resolve_dispute' }
   | null
+
+const BOOKING_STATUSES = [
+  'pending_payment', 'confirmed', 'checked_in', 'checked_out',
+  'cancelled_by_admin', 'disputed', 'completed',
+] as const
 
 const TERMINAL_STATUSES = new Set([
   'completed', 'guest_cancelled', 'cancelled_by_host',
@@ -65,7 +72,7 @@ function ActionButton({
 
 export default function BookingActions({
   status, refundAmount, refundStatus, payoutStatus,
-  onCancel, onOverrideRefund, onOverridePayout, onDispute,
+  onCancel, onOverrideRefund, onOverridePayout, onOverrideStatus, onDispute,
 }: Props) {
   const router = useRouter()
   const [modal, setModal]                 = useState<Modal>(null)
@@ -74,6 +81,8 @@ export default function BookingActions({
   const [newRefundAmt, setNewRefundAmt]   = useState<string>(refundAmount != null ? String(refundAmount / 100) : '')
   const [newRefundSt, setNewRefundSt]     = useState(refundStatus ?? 'none')
   const [newPayoutSt, setNewPayoutSt]     = useState(payoutStatus)
+  const [newStatus, setNewStatus]         = useState(status)
+  const [statusReason, setStatusReason]   = useState('')
   const [disputeReason, setDisputeReason] = useState('')
   const [toast, setToast]                 = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [pending, startTransition]        = useTransition()
@@ -149,6 +158,15 @@ export default function BookingActions({
             setModal({ type: 'payout' })
           }}>
             Override payout status
+          </ActionButton>
+
+          {/* Status override */}
+          <ActionButton variant="warning" disabled={pending} onClick={() => {
+            setNewStatus(status)
+            setStatusReason('')
+            setModal({ type: 'status' })
+          }}>
+            Override booking status
           </ActionButton>
         </div>
       </div>
@@ -268,6 +286,50 @@ export default function BookingActions({
                     )}
                     className="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-60">
                     {pending ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Status override modal */}
+            {modal.type === 'status' && (
+              <>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Override booking status</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Directly sets the booking status. This is logged in the audit trail.
+                </p>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">New status</label>
+                <select
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 mb-3"
+                >
+                  {BOOKING_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                  Reason <span className="text-gray-400 normal-case font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Manual confirmation after offline payment…"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400"
+                />
+                <div className="flex justify-end gap-3 mt-4">
+                  <button type="button" onClick={() => setModal(null)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+                  <button
+                    type="button"
+                    disabled={pending || newStatus === status}
+                    onClick={() => run(
+                      () => onOverrideStatus(newStatus, statusReason || undefined),
+                      'Booking status updated.'
+                    )}
+                    className="px-4 py-2 text-sm font-semibold rounded-lg bg-yellow-600 text-white hover:bg-yellow-700 disabled:opacity-60"
+                  >
+                    {pending ? 'Saving…' : 'Apply'}
                   </button>
                 </div>
               </>

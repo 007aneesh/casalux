@@ -6,6 +6,7 @@ import {
   cancelBooking,
   overrideBookingRefund,
   overrideBookingPayout,
+  overrideBookingStatus,
   setBookingDispute,
 } from '@/lib/api'
 import BookingActions from '@/components/bookings/BookingActions'
@@ -102,6 +103,13 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   async function handleDispute(disputed: boolean, reason?: string) {
     'use server'
     await setBookingDispute(id, disputed, reason)
+    revalidatePath(`/bookings/${id}`)
+    revalidatePath('/bookings')
+  }
+
+  async function handleOverrideStatus(status: string, reason?: string) {
+    'use server'
+    await overrideBookingStatus(id, status, reason)
     revalidatePath(`/bookings/${id}`)
     revalidatePath('/bookings')
   }
@@ -270,6 +278,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             onCancel={handleCancel}
             onOverrideRefund={handleOverrideRefund}
             onOverridePayout={handleOverridePayout}
+            onOverrideStatus={handleOverrideStatus}
             onDispute={handleDispute}
           />
 

@@ -9,7 +9,7 @@ import Image from 'next/image'
 import { format, parseISO, differenceInCalendarDays } from 'date-fns'
 import {
   ArrowLeft, Calendar, Users, MapPin, Clock,
-  CheckCircle2, XCircle, AlertCircle, CreditCard,
+  CheckCircle2, XCircle, AlertCircle, CreditCard, Star,
 } from 'lucide-react'
 import { Button } from '@casalux/ui'
 import { useAuthedRequest } from '@/lib/hooks/useAuthedRequest'
@@ -45,6 +45,12 @@ export default function BookingDetailPage({ params }: PageProps) {
   const [isPaying, setIsPaying] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewHover, setReviewHover] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const [reviewSubmitted, setReviewSubmitted] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -115,6 +121,29 @@ export default function BookingDetailPage({ params }: PageProps) {
       setError('Something went wrong. Please try again.')
     } finally {
       setIsCancelling(false)
+    }
+  }
+
+  const handleSubmitReview = async () => {
+    if (reviewRating === 0) { setReviewError('Please select a rating.'); return }
+    if (reviewComment.trim().length < 10) { setReviewError('Comment must be at least 10 characters.'); return }
+    setIsSubmittingReview(true)
+    setReviewError(null)
+    try {
+      const res = await authedRequest<any>(`/bookings/${params.id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ rating: reviewRating, comment: reviewComment.trim() }),
+      })
+      if (res.success) {
+        setReviewSubmitted(true)
+        setData((prev: any) => ({ ...prev, review: res.data }))
+      } else {
+        setReviewError((res as any).error?.message ?? 'Could not submit review. Please try again.')
+      }
+    } catch {
+      setReviewError('Something went wrong. Please try again.')
+    } finally {
+      setIsSubmittingReview(false)
     }
   }
 
@@ -292,6 +321,78 @@ export default function BookingDetailPage({ params }: PageProps) {
         {error && (
           <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-4">
             {error}
+          </div>
+        )}
+
+        {/* Review section — only for completed bookings */}
+        {!isRequest && data.status === 'checked_out' && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-5 mb-4">
+            {data.review || reviewSubmitted ? (
+              <>
+                <h3 className="font-semibold text-sm text-navy mb-3">Your review</h3>
+                <div className="flex gap-0.5 mb-2">
+                  {[1,2,3,4,5].map((s) => (
+                    <Star key={s} className={`h-4 w-4 ${s <= Number(data.review?.rating ?? reviewRating) ? 'fill-gold text-gold' : 'text-gray-200'}`} />
+                  ))}
+                </div>
+                <p className="text-sm text-muted">{data.review?.comment ?? reviewComment}</p>
+                {data.review?.hostResponse && (
+                  <div className="mt-3 bg-gray-50 rounded-xl px-3 py-2 border-l-2 border-gold/30 text-xs text-muted italic">
+                    <span className="font-medium not-italic text-navy">Host response: </span>
+                    {data.review.hostResponse}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <h3 className="font-semibold text-sm text-navy mb-1">How was your stay?</h3>
+                <p className="text-xs text-muted mb-4">Share your experience to help future guests.</p>
+
+                {/* Star picker */}
+                <div className="flex gap-1 mb-4">
+                  {[1,2,3,4,5].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onMouseEnter={() => setReviewHover(s)}
+                      onMouseLeave={() => setReviewHover(0)}
+                      onClick={() => setReviewRating(s)}
+                      className="focus:outline-none"
+                    >
+                      <Star className={`h-7 w-7 transition-colors ${s <= (reviewHover || reviewRating) ? 'fill-gold text-gold' : 'text-gray-300'}`} />
+                    </button>
+                  ))}
+                  {reviewRating > 0 && (
+                    <span className="ml-2 text-sm text-muted self-center">
+                      {['','Terrible','Poor','Fair','Good','Excellent'][reviewRating]}
+                    </span>
+                  )}
+                </div>
+
+                {/* Comment */}
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Tell us about your stay (at least 10 characters)…"
+                  rows={4}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gold/40 mb-3"
+                />
+
+                {reviewError && (
+                  <p className="text-xs text-red-600 mb-3">{reviewError}</p>
+                )}
+
+                <Button
+                  variant="gold"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleSubmitReview}
+                  disabled={isSubmittingReview}
+                >
+                  {isSubmittingReview ? 'Submitting…' : 'Submit review'}
+                </Button>
+              </>
+            )}
           </div>
         )}
 

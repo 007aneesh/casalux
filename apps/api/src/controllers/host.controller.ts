@@ -35,6 +35,7 @@ export class HostController {
         upcomingCheckIns,
         earningsThisMonth,
         earningsAllTime,
+        reviewStats,
       ] = await Promise.all([
         db.listing.count({ where: { hostId: hostProfileId, status: 'active' } }),
         db.listing.count({ where: { hostId: hostProfileId } }),
@@ -55,6 +56,11 @@ export class HostController {
           where: { hostId: hostProfileId },
           _sum:  { amount: true },
         }),
+        db.review.aggregate({
+          where: { listing: { hostId: hostProfileId }, isVisible: true },
+          _avg:   { rating: true },
+          _count: { id: true },
+        }),
       ])
 
       return c.json({
@@ -68,11 +74,10 @@ export class HostController {
           upcomingCheckIns:  upcomingCheckIns,
           thisMonthEarnings: earningsThisMonth._sum.amount ?? 0,
           allTimeEarnings:   earningsAllTime._sum.amount   ?? 0,
-          // Not yet computed server-side — placeholders so the type is satisfied
           totalBookings:     confirmedBookings,
           totalEarnings:     earningsAllTime._sum.amount ?? 0,
-          avgRating:         0,
-          reviewCount:       0,
+          avgRating:         Number(reviewStats._avg.rating ?? 0),
+          reviewCount:       reviewStats._count.id,
         },
       })
     } catch (err) {
