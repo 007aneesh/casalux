@@ -9,11 +9,25 @@
     "declaration": false,
     "declarationMap": false,
     "paths": {
-      "@casalux/types":            ["../../packages/types/src/index.ts"],
-      "@casalux/utils":            ["../../packages/utils/src/index.ts"],
-      "@casalux/ui":               ["../../packages/ui/src/index.ts"]
+      "@casalux/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@casalux/utils": [
+        "../../packages/utils/src/index.ts"
+      ],
+      "@casalux/ui": [
+        "../../packages/ui/src/index.ts"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

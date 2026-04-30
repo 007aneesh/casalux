@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Casalux",
+    "slug": "casalux",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "casalux",
+    "splash": {
+      "backgroundColor": "#0E1B32",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.casalux.app"
+    },
+    "android": {
+      "package": "com.casalux.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E1B32"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    }
+  }
+}
