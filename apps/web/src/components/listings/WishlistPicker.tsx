@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Heart, Plus, Check, X } from 'lucide-react'
 import { useWishlists, useWishlistActions } from '@/lib/hooks/useWishlists'
 import { useAuthedRequest } from '@/lib/hooks/useAuthedRequest'
+import { useSWRConfig } from 'swr'
 
 interface WishlistPickerProps {
   listingId: string
@@ -14,19 +15,33 @@ export function WishlistPicker({ listingId, onClose }: WishlistPickerProps) {
   const { wishlists, isLoading, mutate } = useWishlists()
   const { createWishlist } = useWishlistActions()
   const authedRequest = useAuthedRequest()
+  const { mutate: globalMutate } = useSWRConfig()
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState<string | null>(null)
 
   async function handleSelect(wishlistId: string) {
     setSaving(wishlistId)
+
+    // Optimistic update: bump the count locally, close immediately.
+    mutate(
+      (current: any[] = []) =>
+        current.map((w) =>
+          w.id === wishlistId
+            ? { ...w, _count: { ...(w._count ?? {}), items: (w._count?.items ?? 0) + 1 } }
+            : w
+        ),
+      { revalidate: false }
+    )
+    onClose()
+
     try {
       await authedRequest(`/users/me/wishlists/${wishlistId}/listings`, {
         method: 'POST',
         body: JSON.stringify({ listingId }),
       })
-      await mutate()
-      onClose()
+      mutate()
+      globalMutate(`/users/me/wishlists/check/${listingId}`)
     } finally {
       setSaving(null)
     }
@@ -78,7 +93,7 @@ export function WishlistPicker({ listingId, onClose }: WishlistPickerProps) {
                   {saving === w.id ? (
                     <span className="text-xs text-muted">Saving…</span>
                   ) : (
-                    <span className="text-xs text-muted">{w.itemCount ?? 0} saved</span>
+                    <span className="text-xs text-muted">{w._count?.items ?? 0} saved</span>
                   )}
                 </button>
               ))}

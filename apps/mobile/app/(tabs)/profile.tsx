@@ -34,31 +34,11 @@ export default function ProfileScreen(): JSX.Element {
     'Guest'
 
   const items: { label: string; icon: string; onPress: () => void }[] = [
-    {
-      label: 'Trips',
-      icon: '✈',
-      onPress: () => router.push('/(tabs)/trips'),
-    },
-    {
-      label: 'Wishlists',
-      icon: '♡',
-      onPress: () => router.push('/(tabs)/wishlists'),
-    },
-    {
-      label: 'Inbox',
-      icon: '✉',
-      onPress: () => router.push('/(tabs)/inbox'),
-    },
-    {
-      label: 'Become a host',
-      icon: '🏠',
-      onPress: () => Linking.openURL('https://casalux.com/become-a-host'),
-    },
-    {
-      label: 'Help',
-      icon: '?',
-      onPress: () => Linking.openURL('https://casalux.com/help'),
-    },
+    { label: 'Trips', icon: '✈', onPress: () => router.push('/(tabs)/trips') },
+    { label: 'Wishlists', icon: '♡', onPress: () => router.push('/(tabs)/wishlists') },
+    { label: 'Inbox', icon: '✉', onPress: () => router.push('/(tabs)/inbox') },
+    { label: 'Become a host', icon: '🏠', onPress: () => Linking.openURL('https://casalux.com/become-a-host') },
+    { label: 'Help', icon: '?', onPress: () => Linking.openURL('https://casalux.com/help') },
   ]
 
   return (
@@ -70,9 +50,7 @@ export default function ProfileScreen(): JSX.Element {
 
         <View className="items-center px-5 py-8">
           <Avatar src={user.imageUrl} name={fullName} size={88} />
-          <Text className="font-display text-2xl text-foreground mt-4">
-            {fullName}
-          </Text>
+          <Text className="font-display text-2xl text-foreground mt-4">{fullName}</Text>
           <Text className="font-sans text-muted mt-1">
             {user.emailAddresses[0]?.emailAddress}
           </Text>
@@ -86,21 +64,14 @@ export default function ProfileScreen(): JSX.Element {
               className="flex-row items-center px-5 py-4 border-b border-border"
             >
               <Text className="text-xl w-8">{item.icon}</Text>
-              <Text className="flex-1 font-sans text-base text-foreground ml-2">
-                {item.label}
-              </Text>
+              <Text className="flex-1 font-sans text-base text-foreground ml-2">{item.label}</Text>
               <Text className="text-2xl text-mutedLight">›</Text>
             </Pressable>
           ))}
         </View>
 
         <View className="px-5 mt-8">
-          <Button
-            label="Sign out"
-            variant="outline"
-            fullWidth
-            onPress={() => signOut()}
-          />
+          <Button label="Sign out" variant="outline" fullWidth onPress={() => signOut()} />
         </View>
       </ScrollView>
     </SafeAreaView>

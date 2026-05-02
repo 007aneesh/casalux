@@ -26,7 +26,6 @@ const tokenCache = {
 const CLERK_PUBLISHABLE_KEY =
   process.env['EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY'] ?? ''
 
-// QueryClient is module-level so it's created once
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -64,7 +63,6 @@ function AuthGate(): JSX.Element {
 }
 
 export default function RootLayout(): JSX.Element {
-  // Load fonts in the background — screens render immediately with system fallbacks
   useAppFonts()
 
   return (
