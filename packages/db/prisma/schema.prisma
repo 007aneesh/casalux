@@ -14,7 +14,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Enums ────────────────────────────────────────────────────────────────────
+// ─── Enums ───────────────────────────────────────────────────────────────
 
 enum UserRole {
   guest
@@ -63,6 +63,8 @@ enum BookingStatus {
   host_approved
   pending_payment
   confirmed
+  checked_in
+  checked_out
   completed
   host_declined
   guest_cancelled
@@ -140,7 +142,7 @@ enum PaymentProvider {
   paypal
 }
 
-// ─── Models ───────────────────────────────────────────────────────────────────
+// ─── Models ──────────────────────────────────────────────────────────────
 
 model User {
   id                 String             @id @default(cuid())
