@@ -17,6 +17,7 @@ import { locationsRouter } from './routes/locations.js'
 import { messagesRouter } from './routes/messages.js'
 import { reviewsRouter } from './routes/reviews.js'
 import { searchRouter } from './routes/search.js'
+import { aivoyRouter } from './aivoy/index.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { rateLimiter } from './middleware/rate-limiter.js'
 
@@ -96,6 +97,7 @@ v1.route('/locations', locationsRouter)
 v1.route('/messages', messagesRouter)
 v1.route('/reviews', reviewsRouter)
 v1.route('/search', searchRouter)
+v1.route('/aivoy', aivoyRouter)
 
 app.route('/api/v1', v1)
 

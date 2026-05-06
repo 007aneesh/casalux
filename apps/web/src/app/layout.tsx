@@ -3,9 +3,16 @@ import { Playfair_Display, Inter } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import Script from 'next/script'
 import { Navbar } from '@/components/layout/Navbar'
 import { SWRProvider } from '@/components/providers/SWRProvider'
 import './globals.css'
+
+// aivoy concierge widget (drop-in floating chat). Configured via env so the
+// embed can be toggled without redeploying. NEXT_PUBLIC_AIVOY_HOST defaults
+// to the local dev cloud at :3030.
+const AIVOY_TOKEN = process.env.NEXT_PUBLIC_AIVOY_TOKEN
+const AIVOY_HOST = process.env.NEXT_PUBLIC_AIVOY_HOST
 
 // Self-hosted via next/font — zero network round-trip, no render-blocking request
 const playfair = Playfair_Display({
@@ -66,6 +73,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Analytics />
             <SpeedInsights />
           </SWRProvider>
+          {AIVOY_TOKEN && (
+            <Script
+              src={`${AIVOY_HOST}/embed/loader.js`}
+              data-token={AIVOY_TOKEN}
+              data-host={AIVOY_HOST}
+              strategy="afterInteractive"
+            />
+          )}
         </body>
       </html>
     </ClerkProvider>

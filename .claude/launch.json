@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "aivoy-cloud",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@aivoy/cloud",
+        "--dir",
+        "/Users/aneeshwiz/Desktop/aivoy",
+        "dev"
+      ],
+      "port": 3030
+    },
+    {
+      "name": "casalux-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@casalux/web",
+        "dev"
+      ],
+      "port": 3000
+    }
+  ]
+}
