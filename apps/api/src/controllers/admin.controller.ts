@@ -14,8 +14,8 @@ async function logAudit(params: {
   action: string
   entityType: string
   entityId: string
-  before?: Record<string, unknown>
-  after?: Record<string, unknown>
+  before?: Record<string, unknown> | null
+  after?: Record<string, unknown> | null
   c: Context
 }) {
   try {
@@ -169,6 +169,7 @@ export class AdminController {
         entityType:   'listing',
         entityId:     id,
         before:       { title: listing.title, status: listing.status },
+        after:        null,
         c,
       })
 
