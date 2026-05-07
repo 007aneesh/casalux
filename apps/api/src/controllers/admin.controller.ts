@@ -169,7 +169,6 @@ export class AdminController {
         entityType:   'listing',
         entityId:     id,
         before:       { title: listing.title, status: listing.status },
-        after:        null,
         c,
       })
 
