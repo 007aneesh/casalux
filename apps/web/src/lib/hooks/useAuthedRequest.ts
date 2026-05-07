@@ -20,6 +20,7 @@ export function useAuthedRequest() {
       headers: {
         ...options?.headers,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'Content-Type': 'application/json',
       },
     })
   }
