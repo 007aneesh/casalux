@@ -348,56 +348,74 @@ export class ListingService {
     return profile.id
   }
 
-  // ─── Host: create listing ─────────────────────────────────────────────────
-  async createListing(dbUserId: string, data: CreateListingInput): Promise<ListingWithRelations> {
-    // Resolve the HostProfile primary-key id from the DB user id
-    const hostProfileId = await this.resolveHostProfileId(dbUserId)
+// ─── Host: create listing ─────────────────────────────────────────────────
+async createListing(dbUserId: string, data: CreateListingInput): Promise<ListingWithRelations> {
+  console.log('[createListing] START', { dbUserId })
 
-    // Geocode address if lat/lng not provided
-    let { lat, lng } = data
-    if (!lat || !lng) {
-      const geocoded = await this.geocodeAddress(data.address)
-      lat = geocoded.lat
-      lng = geocoded.lng
-    }
+  // Resolve the HostProfile primary-key id from the DB user id
+  console.log('[createListing] step 1: resolveHostProfileId')
+  const hostProfileId = await this.resolveHostProfileId(dbUserId)
+  console.log('[createListing] step 1 done', { hostProfileId })
 
-    const listing = await this.repo.create({
-      hostId:      hostProfileId,
-      title:       data.title,
-      description: data.description,
-      propertyType: data.propertyType as PropertyType,
-      roomType:     data.roomType     as RoomType,
-      status:       'draft',
-      address:      data.address,
-      lat:          lat.toString(),
-      lng:          lng.toString(),
-      images:       [],
-      basePrice:    data.basePrice,
-      currency:     data.currency ?? 'INR',
-      cleaningFee:  data.cleaningFee ?? 0,
-      minNights:    data.minNights ?? 1,
-      maxNights:    data.maxNights,
-      maxGuests:    data.maxGuests,
-      bedrooms:     data.bedrooms ?? 0,
-      beds:         data.beds ?? 0,
-      baths:        data.baths ?? 0,
-      instantBook:  data.instantBook ?? false,
-      checkInTime:  data.checkInTime  ?? '15:00',
-      checkOutTime: data.checkOutTime ?? '11:00',
-      cancellationPolicy: (data.cancellationPolicy ?? 'flexible') as CancellationPolicy,
-      requireVerifiedId:      data.requireVerifiedId      ?? false,
-      requireProfilePhoto:    data.requireProfilePhoto    ?? false,
-      requirePositiveReviews: data.requirePositiveReviews ?? false,
-    })
-
-    // Set amenities separately
-    if (data.amenities?.length) {
-      await this.repo.setAmenities(listing.id, data.amenities)
-    }
-
-    // Re-fetch with amenities
-    return (await this.repo.findById(listing.id))!
+  // Geocode address if lat/lng not provided
+  let { lat, lng } = data
+  if (!lat || !lng) {
+    console.log('[createListing] step 2: geocodeAddress')
+    const geocoded = await this.geocodeAddress(data.address)
+    lat = geocoded.lat
+    lng = geocoded.lng
+    console.log('[createListing] step 2 done', { lat, lng })
+  } else {
+    console.log('[createListing] step 2 skipped (lat/lng provided)', { lat, lng })
   }
+
+  console.log('[createListing] step 3: repo.create')
+  const listing = await this.repo.create({
+    hostId:      hostProfileId,
+    title:       data.title,
+    description: data.description,
+    propertyType: data.propertyType as PropertyType,
+    roomType:     data.roomType     as RoomType,
+    status:       'draft',
+    address:      data.address,
+    lat:          lat.toString(),
+    lng:          lng.toString(),
+    images:       [],
+    basePrice:    data.basePrice,
+    currency:     data.currency ?? 'INR',
+    cleaningFee:  data.cleaningFee ?? 0,
+    minNights:    data.minNights ?? 1,
+    maxNights:    data.maxNights,
+    maxGuests:    data.maxGuests,
+    bedrooms:     data.bedrooms ?? 0,
+    beds:         data.beds ?? 0,
+    baths:        data.baths ?? 0,
+    instantBook:  data.instantBook ?? false,
+    checkInTime:  data.checkInTime  ?? '15:00',
+    checkOutTime: data.checkOutTime ?? '11:00',
+    cancellationPolicy: (data.cancellationPolicy ?? 'flexible') as CancellationPolicy,
+    requireVerifiedId:      data.requireVerifiedId      ?? false,
+    requireProfilePhoto:    data.requireProfilePhoto    ?? false,
+    requirePositiveReviews: data.requirePositiveReviews ?? false,
+  })
+  console.log('[createListing] step 3 done', { id: listing.id })
+
+  // Set amenities separately
+  if (data.amenities?.length) {
+    console.log('[createListing] step 4: setAmenities', { count: data.amenities.length })
+    await this.repo.setAmenities(listing.id, data.amenities)
+    console.log('[createListing] step 4 done')
+  } else {
+    console.log('[createListing] step 4 skipped (no amenities)')
+  }
+
+  // Re-fetch with amenities
+  console.log('[createListing] step 5: findById')
+  const result = (await this.repo.findById(listing.id))!
+  console.log('[createListing] step 5 done — DONE')
+
+  return result
+}
 
   // ─── Host: update listing ─────────────────────────────────────────────────
   async updateListing(
@@ -552,7 +570,7 @@ export class ListingService {
   }
 
   // ─── Shape for public API response ────────────────────────────────────────
-  shapeListing(listing: ListingWithRelations) {
+  shapeListing(listing: any) {
     return {
       ...listing,
       lat:         Number(listing.lat),
