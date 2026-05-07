@@ -224,8 +224,13 @@ export class ListingController {
 
   // POST /api/v1/host/listings
   async createListing(c: Context) {
+    console.log('[controller.createListing] entry')
     const authUser = c.get('authUser')
-    const body     = await c.req.json()
+    console.log('[controller.createListing] authUser', { dbUserId: authUser?.dbUserId })
+    
+    console.log('[controller.createListing] parsing body')
+    const body = await c.req.json()
+    console.log('[controller.createListing] body parsed')
     const parsed   = createListingSchema.safeParse(body)
 
     if (!parsed.success) {
