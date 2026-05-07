@@ -12,6 +12,8 @@ export type BookingStatus =
   | 'pending_payment'
   | 'confirmed'
   | 'completed'
+  | 'checked_in'
+  | 'checked_out'
   | 'host_declined'
   | 'guest_cancelled'
   | 'cancelled_by_host'
