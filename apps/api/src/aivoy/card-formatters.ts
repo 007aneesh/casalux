@@ -57,7 +57,14 @@ export function toListingCard(listing: any): AivoyListingCard {
     id,
     title,
     subtitle,
-    imageUrl: listing?.coverPhotoUrl ?? listing?.images?.[0] ?? undefined,
+    // The aivoy widget's listingCards schema expects `imageUrl` as a STRING.
+    // Casalux's `images` field is an array of objects (`{ url, order, ... }`)
+    // when it comes from the DB, but a plain URL string when it comes from
+    // the ES index — handle both. If we hand back the object verbatim, the
+    // widget falls through to its FallbackCard which dumps raw JSON in a
+    // <pre>, and the LLM, seeing the data didn't render usefully, tends to
+    // retry the same tool until it hits MAX_TOOL_LOOPS.
+    imageUrl: pickImageUrl(listing),
     price:
       priceAmount != null
         ? { amount: Number(priceAmount), currency, per: 'night' }
@@ -66,6 +73,18 @@ export function toListingCard(listing: any): AivoyListingCard {
     badges: buildBadges(listing),
     href: slug ? `${APP_URL}/listings/${slug}` : undefined,
   }
+}
+
+function pickImageUrl(listing: any): string | undefined {
+  const cover = listing?.coverPhotoUrl
+  if (typeof cover === 'string' && cover.length > 0) return cover
+
+  const first = listing?.images?.[0]
+  if (typeof first === 'string' && first.length > 0) return first
+  if (first && typeof first === 'object' && typeof first.url === 'string') {
+    return first.url
+  }
+  return undefined
 }
 
 function buildBadges(listing: any): string[] | undefined {
