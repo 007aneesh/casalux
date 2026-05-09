@@ -18,18 +18,10 @@ const nextConfig = {
   // this also applies when running behind a custom server / local dev
   compress: true,
 
-  // Proxy the aivoy concierge embed through casalux's own origin. aivoy.vercel.app
-  // is on Vercel's free plan and its system DDoS mitigations were flagging
-  // cross-site <script> loads with `x-vercel-mitigated: deny` (403). Serving the
-  // loader/standalone bundle and chat API as same-origin sidesteps that — the
-  // browser sees casalux-web.vercel.app, the proxy quietly forwards to aivoy.
-  // Long-term fix is a custom domain on the aivoy project; this is the bandage.
-  async rewrites() {
-    const host = process.env.AIVOY_PROXY_TARGET ?? 'https://aivoy.vercel.app'
-    return [
-      { source: '/aivoy/:path*', destination: `${host}/:path*` },
-    ]
-  },
+  // The aivoy embed proxy lives in src/app/aivoy/[...path]/route.ts — it
+  // injects the casalux-web origin header so aivoy's per-token origin
+  // allowlist sees a real origin (browsers don't send Origin on same-origin
+  // GETs, which a plain rewrite can't work around). See that file for why.
 }
 
 export default nextConfig
