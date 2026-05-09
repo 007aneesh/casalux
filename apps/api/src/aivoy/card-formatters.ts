@@ -7,9 +7,15 @@
  *
  * The card schemas are documented at:
  *   https://aivoy.dev/docs#cards
+ *
+ * Pricing: Casalux stores `basePrice` (and ES hits mirror it) in **minor units**
+ * (cents / paise). Aivoy's listing card renderer uses `Intl` currency format,
+ * which expects **major units**, so we divide by 100 when mapping to `price.amount`.
  */
 
 const APP_URL = process.env['NEXT_PUBLIC_APP_URL'] ?? 'https://casalux.com'
+
+const MINOR_PER_MAJOR = 100
 
 // ─── listingCards ───────────────────────────────────────────────────────────
 // Renders a vertical stack of property tiles (image · title · meta · price · badges).
@@ -45,7 +51,7 @@ export function toListingCard(listing: any): AivoyListingCard {
     .filter(Boolean)
     .join(' • ') || undefined
 
-  const priceAmount =
+  const rawMinor =
     listing?.pricePerNight ??
     listing?.price?.amount ??
     listing?.basePrice ??
@@ -53,14 +59,20 @@ export function toListingCard(listing: any): AivoyListingCard {
   const currency = listing?.currency ?? listing?.price?.currency ?? 'USD'
 
   const slug = listing?.slug ?? listing?.id
+  /** `listing.price.amount` is treated as minor units if nested under `price` from our APIs */
+  const amountMajor =
+    rawMinor != null && Number.isFinite(Number(rawMinor))
+      ? Number(rawMinor) / MINOR_PER_MAJOR
+      : null
+
   return {
     id,
     title,
     subtitle,
     imageUrl: pickImageUrl(listing),
     price:
-      priceAmount != null
-        ? { amount: Number(priceAmount), currency, per: 'night' }
+      amountMajor != null
+        ? { amount: amountMajor, currency, per: 'night' }
         : undefined,
     rating: listing?.avgRating ?? listing?.rating ?? undefined,
     badges: buildBadges(listing),
