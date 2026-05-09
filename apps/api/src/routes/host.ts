@@ -9,6 +9,7 @@
  *   GET    /api/v1/host/listings/:id          → get single listing (own only)
  *   PUT    /api/v1/host/listings/:id          → full update
  *   PATCH  /api/v1/host/listings/:id/status   → change status
+ *   DELETE /api/v1/host/listings/:id          → soft-delete (status → archived)
  *   PUT    /api/v1/host/listings/:id/availability → set blocked dates / rules
  *
  * Bookings:
@@ -55,6 +56,7 @@ hostRouter.get('/listings',                           (c) => controller.getHostL
 hostRouter.get('/listings/:id',                       (c) => controller.getHostListingById(c))
 hostRouter.put('/listings/:id',                       (c) => controller.updateListing(c))
 hostRouter.patch('/listings/:id/status',              (c) => controller.updateStatus(c))
+hostRouter.delete('/listings/:id',                    (c) => controller.deleteListing(c))
 hostRouter.put('/listings/:id/availability',          (c) => controller.updateAvailability(c))
 
 // ─── Booking management ───────────────────────────────────────────────────────

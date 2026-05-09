@@ -85,3 +85,33 @@ export function requireAuth(): MiddlewareHandler {
     }
   }
 }
+
+/**
+ * Like requireAuth but doesn't reject on missing/bad token. Used on public
+ * routes that want to personalize for signed-in viewers (e.g. show a host
+ * their own draft listings). Skips the Clerk user fetch + DB upsert that
+ * requireAuth does — only resolves dbUserId.
+ */
+export function optionalAuth(): MiddlewareHandler {
+  return async (c, next) => {
+    const token = c.req.header('Authorization')?.replace('Bearer ', '')
+    if (!token) return next()
+    try {
+      const payload = await verifyToken(token, { secretKey: process.env['CLERK_SECRET_KEY']! })
+      const dbUser = await db.user.findUnique({ where: { clerkId: payload.sub } })
+      if (dbUser) {
+        c.set('userId', payload.sub)
+        c.set('authUser', {
+          userId:   payload.sub,
+          clerkId:  payload.sub,
+          dbUserId: dbUser.id,
+          role:     dbUser.role as import('./types.js').AuthUser['role'],
+          email:    dbUser.email,
+        })
+      }
+    } catch {
+      // ignore — treat as anonymous
+    }
+    await next()
+  }
+}

@@ -7,6 +7,7 @@ import { useWishlists, useWishlistActions } from '@/lib/hooks/useWishlists'
 import { Skeleton } from '@casalux/ui'
 import { Heart, Plus, Trash2, MapPin } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 function WishlistCard({ wishlist, onDelete }: { wishlist: any; onDelete: (id: string) => void }) {
   // API returns items[] with nested listing.images[]
@@ -100,6 +101,8 @@ export default function WishlistsPage() {
   const { wishlists, isLoading, mutate } = useWishlists()
   const { createWishlist, deleteWishlist } = useWishlistActions()
   const [showCreate, setShowCreate] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   async function handleCreate(name: string) {
     await createWishlist(name)
@@ -107,10 +110,21 @@ export default function WishlistsPage() {
     mutate()
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this wishlist?')) return
-    await deleteWishlist(id)
-    mutate()
+  function requestDelete(id: string) {
+    const wl = wishlists?.find((w: any) => w.id === id)
+    setPendingDelete({ id, name: wl?.name ?? 'this wishlist' })
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return
+    setDeleting(true)
+    try {
+      await deleteWishlist(pendingDelete.id)
+      mutate()
+      setPendingDelete(null)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -147,7 +161,7 @@ export default function WishlistsPage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
             {wishlists.map((w: any) => (
-              <WishlistCard key={w.id} wishlist={w} onDelete={handleDelete} />
+              <WishlistCard key={w.id} wishlist={w} onDelete={requestDelete} />
             ))}
           </div>
         )}
@@ -156,6 +170,18 @@ export default function WishlistsPage() {
       {showCreate && (
         <CreateWishlistModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this wishlist?"
+        description={pendingDelete?.name}
+        confirmLabel="Delete wishlist"
+        busyLabel="Deleting…"
+        busy={deleting}
+        variant="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </main>
   )
 }

@@ -57,13 +57,6 @@ export function toListingCard(listing: any): AivoyListingCard {
     id,
     title,
     subtitle,
-    // The aivoy widget's listingCards schema expects `imageUrl` as a STRING.
-    // Casalux's `images` field is an array of objects (`{ url, order, ... }`)
-    // when it comes from the DB, but a plain URL string when it comes from
-    // the ES index — handle both. If we hand back the object verbatim, the
-    // widget falls through to its FallbackCard which dumps raw JSON in a
-    // <pre>, and the LLM, seeing the data didn't render usefully, tends to
-    // retry the same tool until it hits MAX_TOOL_LOOPS.
     imageUrl: pickImageUrl(listing),
     price:
       priceAmount != null

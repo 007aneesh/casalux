@@ -14,6 +14,7 @@ import {
 import { Button } from '@casalux/ui'
 import { useAuthedRequest } from '@/lib/hooks/useAuthedRequest'
 import { formatPrice, formatDateShort } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 interface PageProps {
   params: { id: string }
@@ -44,6 +45,7 @@ export default function BookingDetailPage({ params }: PageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isPaying, setIsPaying] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewHover, setReviewHover] = useState(0)
@@ -103,7 +105,7 @@ export default function BookingDetailPage({ params }: PageProps) {
   }
 
   const handleCancel = async () => {
-    if (!data || !confirm('Are you sure you want to cancel this booking?')) return
+    if (!data) return
     setIsCancelling(true)
     setError(null)
     try {
@@ -116,9 +118,11 @@ export default function BookingDetailPage({ params }: PageProps) {
         router.push('/bookings')
       } else {
         setError((res as any).error?.message ?? 'Could not cancel. Please try again.')
+        setConfirmingCancel(false)
       }
     } catch {
       setError('Something went wrong. Please try again.')
+      setConfirmingCancel(false)
     } finally {
       setIsCancelling(false)
     }
@@ -414,12 +418,24 @@ export default function BookingDetailPage({ params }: PageProps) {
             </Button>
           )}
           {canCancel && (
-            <Button variant="outline" size="lg" className="w-full text-red-600 border-red-200 hover:bg-red-50" onClick={handleCancel} disabled={isCancelling}>
+            <Button variant="outline" size="lg" className="w-full text-red-600 border-red-200 hover:bg-red-50" onClick={() => setConfirmingCancel(true)} disabled={isCancelling}>
               {isCancelling ? 'Cancelling…' : 'Cancel booking'}
             </Button>
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmingCancel}
+        title="Cancel this booking?"
+        description={isRequest ? 'Your booking request will be withdrawn.' : 'Cancellation fees may apply per the listing’s policy.'}
+        confirmLabel="Cancel booking"
+        cancelLabel="Keep booking"
+        busyLabel="Cancelling…"
+        busy={isCancelling}
+        variant="danger"
+        onCancel={() => setConfirmingCancel(false)}
+        onConfirm={handleCancel}
+      />
     </div>
   )
 }

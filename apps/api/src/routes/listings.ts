@@ -13,6 +13,7 @@
  *       BEFORE /:id to prevent Hono matching them as the :id param.
  */
 import { Hono } from 'hono'
+import { optionalAuth } from '@casalux/auth'
 import { requireAuth } from '../middleware/auth.js'
 import { ListingService }     from '../services/listing.service.js'
 import { ListingController }  from '../controllers/listing.controller.js'
@@ -36,7 +37,7 @@ listingsRouter.get('/recommended',   (c) => controller.getRecommended(c))
 listingsRouter.get('/', (c) => controller.getListings(c))
 
 // Single listing + nested resources
-listingsRouter.get( '/:id',                 (c) => controller.getListingById(c))
+listingsRouter.get( '/:id', optionalAuth(),  (c) => controller.getListingById(c))
 listingsRouter.get( '/:id/availability',    (c) => controller.getAvailability(c))
 listingsRouter.get( '/:id/pricing-preview', (c) => controller.getPricingPreview(c))
 listingsRouter.get( '/:id/reviews',         (c) => controller.getReviews(c))

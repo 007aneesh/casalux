@@ -11,6 +11,7 @@ import { ReviewsSection } from '@/components/listings/ReviewsSection'
 import { BookingWidget } from '@/components/booking/BookingWidget'
 import { MobileBookingBar } from '@/components/booking/MobileBookingBar'
 import { ExpandableText } from '@/components/listings/ExpandableText'
+import { auth } from '@clerk/nextjs/server'
 import { apiRequest } from '@/lib/api-client'
 import { formatPrice, pluralize } from '@/lib/utils'
 import type { Listing } from '@casalux/types'
@@ -21,8 +22,17 @@ interface PageProps {
 
 async function getListing(id: string): Promise<Listing | null> {
   try {
+    // Forward the signed-in user's Clerk JWT so the API can serve a host
+    // their own non-active drafts (the "Preview" link from /host/listings).
+    // For anonymous viewers no header is set and the API stays public-only.
+    const { getToken } = await auth()
+    const token: string | null = await getToken().catch((): null => null)
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
     const res = await apiRequest<Listing>(`/listings/${id}`, {
-      next: { revalidate: 600 },
+      headers,
+      // Skip the shared edge cache when authed — the response is per-user.
+      cache: token ? 'no-store' : undefined,
+      next: token ? undefined : { revalidate: 600 },
     })
     return res.success ? res.data : null
   } catch (err) {

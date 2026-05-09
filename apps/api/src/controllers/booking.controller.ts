@@ -132,6 +132,9 @@ export class BookingController {
   }
 
   // GET /api/v1/bookings/:id/cancellation-preview
+  // Explicit `Promise<Response>` return type so TS doesn't try to write a
+  // declaration that references the Prisma client's generated types — the
+  // implicit chain otherwise leaks `PrismaPromise` and triggers TS2742.
   async getCancellationPreview(c: Context): Promise<Response> {
     const authUser = c.get('authUser')
     const id       = c.req.param('id') as string

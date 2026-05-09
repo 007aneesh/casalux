@@ -136,8 +136,14 @@ export class ListingController {
 
   // GET /api/v1/listings/:id
   async getListingById(c: Context) {
-    const id = c.req.param('id') as string as string
-    const listing = await this.service.getListingById(id)
+    const id = c.req.param('id') as string
+    const authUser = c.get('authUser') as { dbUserId: string; role: string } | undefined
+    const isHost = authUser && (authUser.role === 'host' || authUser.role === 'admin' || authUser.role === 'super_admin')
+    const viewerHostId = isHost
+      ? await this.service.resolveHostProfileId(authUser!.dbUserId)
+      : undefined
+
+    const listing = await this.service.getListingById(id, viewerHostId)
 
     if (!listing) {
       return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Listing not found' } }, 404)
@@ -336,6 +342,23 @@ export class ListingController {
       const hostProfileId = await this.service.resolveHostProfileId(authUser.dbUserId)
       await this.service.updateStatus(id, hostProfileId, parsed.data.status as ListingStatus)
       return c.json({ success: true, data: { message: 'Status updated' } })
+    } catch (err) {
+      if (err instanceof Error && err.message === 'NOT_FOUND') {
+        return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Listing not found' } }, 404)
+      }
+      throw err
+    }
+  }
+
+  // DELETE /api/v1/host/listings/:id
+  async deleteListing(c: Context) {
+    const authUser = c.get('authUser')
+    const id       = c.req.param('id') as string
+
+    try {
+      const hostProfileId = await this.service.resolveHostProfileId(authUser.dbUserId)
+      await this.service.deleteListing(id, hostProfileId)
+      return c.json({ success: true, data: { message: 'Listing deleted' } })
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_FOUND') {
         return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Listing not found' } }, 404)

@@ -7,6 +7,7 @@ import { useHostListings, useHostActions } from '@/lib/hooks/useHost'
 import { Skeleton, Badge } from '@casalux/ui'
 import { formatPrice } from '@/lib/utils'
 import { Plus, Star, MoreVertical, Eye, EyeOff, Pencil, Trash2, Zap } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'warning' | 'muted' | 'error' | 'default' }> = {
   active: { label: 'Active', variant: 'success' },
@@ -17,7 +18,19 @@ const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'warnin
 
 function ListingRow({ listing, onToggle, onDelete }: { listing: any; onToggle: () => void; onDelete: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const badge = STATUS_BADGE[listing.status] ?? STATUS_BADGE.inactive
+
+  async function handleConfirmDelete() {
+    setDeleting(true)
+    try {
+      await onDelete()
+      setConfirmingDelete(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="flex gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-card hover:shadow-card-hover transition-shadow">
@@ -94,7 +107,7 @@ function ListingRow({ listing, onToggle, onDelete }: { listing: any; onToggle: (
               </Link>
               <div className="border-t border-gray-100 my-1" />
               <button
-                onClick={() => { if (confirm('Delete this listing?')) { onDelete(); setMenuOpen(false) } }}
+                onClick={() => { setConfirmingDelete(true); setMenuOpen(false) }}
                 className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-red-50 text-red-600 transition-colors w-full text-left"
               >
                 <Trash2 size={14} />
@@ -104,6 +117,17 @@ function ListingRow({ listing, onToggle, onDelete }: { listing: any; onToggle: (
           </>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this listing?"
+        description={listing.title}
+        confirmLabel="Delete listing"
+        busyLabel="Deleting…"
+        busy={deleting}
+        variant="danger"
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   )
 }

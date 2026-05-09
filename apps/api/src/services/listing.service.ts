@@ -124,20 +124,25 @@ export class ListingService {
   }
 
   // ─── Public: single listing detail ────────────────────────────────────────
-  async getListingById(id: any) {
+  async getListingById(id: any, viewerHostId?: string) {
+    // Skip cache for owner previews — they may have just edited a draft and
+    // need to see it immediately, before the cache is invalidated.
     const cacheKey = CacheKeys.listing(id)
-    const cached   = await this.cache.get(cacheKey)
-    if (cached) return JSON.parse(cached)
-
+    if (!viewerHostId) {
+      const cached = await this.cache.get(cacheKey)
+      if (cached) return JSON.parse(cached)
+    }
 
     const listing = await this.repo.findById(id)
     if (!listing) return null
 
-    // Only serve active listings publicly
-    if (listing.status !== 'active') return null
+    const isOwner = viewerHostId && listing.hostId === viewerHostId
+    if (listing.status !== 'active' && !isOwner) return null
 
     const shaped = this.shapeListing(listing)
-    await this.cache.set(cacheKey, JSON.stringify(shaped), 600) // 10 min TTL
+    if (listing.status === 'active' && !viewerHostId) {
+      await this.cache.set(cacheKey, JSON.stringify(shaped), 600)
+    }
     return shaped
   }
 
@@ -480,6 +485,10 @@ async createListing(dbUserId: string, data: CreateListingInput): Promise<Listing
       // Remove from ES index when paused/archived/flagged
       await this.search.delete('listings', id).catch(() => {})
     }
+  }
+
+  async deleteListing(id: any, hostId: string): Promise<void> {
+    await this.updateStatus(id, hostId, 'archived' as ListingStatus)
   }
 
   // ─── Host: update availability ────────────────────────────────────────────

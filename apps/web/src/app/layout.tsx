@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Playfair_Display, Inter } from 'next/font/google'
+import { Montserrat, Inter } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
@@ -15,7 +15,7 @@ const AIVOY_TOKEN = process.env.NEXT_PUBLIC_AIVOY_TOKEN
 const AIVOY_HOST = process.env.NEXT_PUBLIC_AIVOY_HOST
 
 // Self-hosted via next/font — zero network round-trip, no render-blocking request
-const playfair = Playfair_Display({
+const montserrat = Montserrat({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-display',
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${playfair.variable} ${inter.variable} scroll-smooth`} suppressHydrationWarning>
+      <html lang="en" className={`${montserrat.variable} ${inter.variable} scroll-smooth`} suppressHydrationWarning>
         <body className="min-h-screen bg-background text-foreground antialiased">
           {/* Resource hints — React 18 hoists these to <head> */}
           {/* Cloudinary: Next.js image optimiser fetches originals server-side,

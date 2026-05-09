@@ -39,7 +39,7 @@
   }
 
   h1, h2, h3 {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: var(--font-display), 'Montserrat', system-ui, sans-serif;
   }
 
   /* Scrollbar */
@@ -51,7 +51,7 @@
 
 @layer components {
   .font-display {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: var(--font-display), 'Montserrat', system-ui, sans-serif;
   }
 
   /* Image overlay gradient for listing cards */
