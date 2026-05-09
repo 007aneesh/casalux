@@ -14,14 +14,14 @@ import { defineAivoyTool } from '../registry.js'
 import { toListingCard, type AivoyListingCard } from '../card-formatters.js'
 
 const Schema = z.object({
-  query: z.string().optional().describe('Free-text destination or keyword'),
-  city: z.string().optional(),
-  country: z.string().optional(),
-  checkIn: z.string().optional().describe('YYYY-MM-DD'),
-  checkOut: z.string().optional().describe('YYYY-MM-DD'),
-  guests: z.number().int().min(1).optional(),
-  minPrice: z.number().nonnegative().optional().describe('Minimum nightly price in the listing currency (e.g. rupees, dollars) — major units, NOT minor'),
-  maxPrice: z.number().positive().optional().describe('Maximum nightly price in the listing currency (e.g. rupees, dollars) — major units, NOT minor'),
+  query: z.string().optional().describe('Free-text destination or keyword. Only set if the user named a place.'),
+  city: z.string().optional().describe('City name. Only set if the user named one — never invent.'),
+  country: z.string().optional().describe('Country name. Only set if the user named one — never invent.'),
+  checkIn: z.string().optional().describe('YYYY-MM-DD. Only if the user gave dates.'),
+  checkOut: z.string().optional().describe('YYYY-MM-DD. Only if the user gave dates.'),
+  guests: z.number().int().min(1).optional().describe('Guest count. Only set if the user specified one — do NOT default to 1.'),
+  minPrice: z.number().nonnegative().optional().describe('REQUIRED whenever the user mentions a minimum price (e.g. "above 2000", "at least ₹3000"). In MAJOR currency units (rupees / dollars), not paise / cents. Example: user says "above 2k" → minPrice: 2000.'),
+  maxPrice: z.number().positive().optional().describe('REQUIRED whenever the user mentions a maximum price (e.g. "under 5000", "below ₹4k", "less than 100 dollars", "max 5k", "cheap"). In MAJOR currency units (rupees / dollars), not paise / cents. Example: user says "under 5000" → maxPrice: 5000. Failing to set this will return listings the user does not want.'),
   amenities: z.array(z.string()).optional(),
   petFriendly: z.boolean().optional(),
   instantBook: z.boolean().optional(),
