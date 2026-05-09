@@ -17,11 +17,6 @@ const nextConfig = {
   // Compress responses (brotli/gzip) — Vercel does this at the edge, but
   // this also applies when running behind a custom server / local dev
   compress: true,
-
-  // The aivoy embed proxy lives in src/app/aivoy/[...path]/route.ts — it
-  // injects the casalux-web origin header so aivoy's per-token origin
-  // allowlist sees a real origin (browsers don't send Origin on same-origin
-  // GETs, which a plain rewrite can't work around). See that file for why.
 }
 
 export default nextConfig
