@@ -20,8 +20,8 @@ const Schema = z.object({
   checkIn: z.string().optional().describe('YYYY-MM-DD'),
   checkOut: z.string().optional().describe('YYYY-MM-DD'),
   guests: z.number().int().min(1).optional(),
-  minPrice: z.number().nonnegative().optional(),
-  maxPrice: z.number().positive().optional(),
+  minPrice: z.number().nonnegative().optional().describe('Minimum nightly price in the listing currency (e.g. rupees, dollars) — major units, NOT minor'),
+  maxPrice: z.number().positive().optional().describe('Maximum nightly price in the listing currency (e.g. rupees, dollars) — major units, NOT minor'),
   amenities: z.array(z.string()).optional(),
   petFriendly: z.boolean().optional(),
   instantBook: z.boolean().optional(),
@@ -41,13 +41,14 @@ export const searchListings = defineAivoyTool({
   handler: async (args: Args, ctx): Promise<AivoyListingCard[]> => {
     // Casalux's ListingSearchParams has `location` as the free-text field.
     const location = args.query ?? args.city ?? args.country
+    const MINOR_PER_MAJOR = 100
     const result = await ctx.services.listings.getListings({
       location,
       checkIn: args.checkIn,
       checkOut: args.checkOut,
       guests: args.guests,
-      minPrice: args.minPrice,
-      maxPrice: args.maxPrice,
+      minPrice: args.minPrice != null ? args.minPrice * MINOR_PER_MAJOR : undefined,
+      maxPrice: args.maxPrice != null ? args.maxPrice * MINOR_PER_MAJOR : undefined,
       amenities: args.amenities,
       petFriendly: args.petFriendly,
       instantBook: args.instantBook,
