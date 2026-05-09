@@ -34,7 +34,9 @@ webhooksRouter.post('/clerk', async (c) => {
     return c.json({ error: 'Missing svix headers' }, 400)
   }
 
-  const body    = await c.req.text()
+  // Read raw body via the underlying Web Request, not c.req.text(). The
+  // Vercel Node adapter's stream wrapper makes c.req.text() hang on POST.
+  const body    = await c.req.raw.text()
   const wh      = new Webhook(webhookSecret)
   let event: { type: string; data: Record<string, unknown> }
 
@@ -130,7 +132,7 @@ webhooksRouter.post('/clerk', async (c) => {
 // ─── POST /api/v1/webhooks/payment ───────────────────────────────────────────
 // PRD Section 8.2 — signature verify → idempotency → enqueue → return 200 immediately
 webhooksRouter.post('/payment', async (c) => {
-  const rawBody  = await c.req.arrayBuffer()
+  const rawBody  = await c.req.raw.arrayBuffer()
   const rawBytes = Buffer.from(rawBody)
   const provider = (c.req.query('provider') ?? 'stripe').toLowerCase()
 

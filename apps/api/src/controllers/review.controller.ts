@@ -32,7 +32,7 @@ export class ReviewController {
   /** POST /api/v1/bookings/:id/review */
   async writeReview(c: Context): Promise<Response> {
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = writeReviewSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
@@ -56,7 +56,7 @@ export class ReviewController {
       response: z.string().min(1).max(1500),
     })
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = schema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 

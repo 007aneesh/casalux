@@ -51,7 +51,7 @@ export class LocationController {
       sessionId:   z.string().optional(),
     })
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = schema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 

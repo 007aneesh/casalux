@@ -64,7 +64,7 @@ export class BookingController {
   // POST /api/v1/bookings/initiate
   async initiateBooking(c: Context) {
     const authUser = c.get('authUser')
-    const body     = await c.req.json()
+    const body     = await c.req.raw.json()
     const parsed   = initiateBookingSchema.safeParse(body)
 
     if (!parsed.success) {
@@ -132,7 +132,7 @@ export class BookingController {
   }
 
   // GET /api/v1/bookings/:id/cancellation-preview
-  async getCancellationPreview(c: Context) {
+  async getCancellationPreview(c: Context): Promise<Response> {
     const authUser = c.get('authUser')
     const id       = c.req.param('id') as string
 
@@ -148,7 +148,7 @@ export class BookingController {
   async cancelBooking(c: Context) {
     const authUser = c.get('authUser')
     const id       = c.req.param('id') as string
-    const body     = await c.req.json().catch(() => ({}))
+    const body     = await c.req.raw.json().catch(() => ({}))
     const parsed   = cancelBookingSchema.safeParse(body)
 
     try {
@@ -169,7 +169,7 @@ export class BookingController {
   // POST /api/v1/booking-requests
   async createRequest(c: Context) {
     const authUser = c.get('authUser')
-    const body     = await c.req.json()
+    const body     = await c.req.raw.json()
     const parsed   = createRequestSchema.safeParse(body)
 
     if (!parsed.success) {
@@ -185,7 +185,7 @@ export class BookingController {
   }
 
   // GET /api/v1/booking-requests/:id
-  async getRequest(c: Context) {
+  async getRequest(c: Context): Promise<Response> {
     const authUser = c.get('authUser')
     const id       = c.req.param('id') as string
 
@@ -209,7 +209,7 @@ export class BookingController {
   }
 
   // GET /api/v1/users/me/booking-requests
-  async getMyRequests(c: Context) {
+  async getMyRequests(c: Context): Promise<Response> {
     const authUser = c.get('authUser')
     const parsed   = paginationSchema.safeParse(Object.fromEntries(new URLSearchParams(c.req.url.split('?')[1] ?? '')))
 
@@ -315,7 +315,7 @@ export class BookingController {
       }
 
       const id     = c.req.param('id') as string
-      const body   = await c.req.json().catch(() => ({}))
+      const body   = await c.req.raw.json().catch(() => ({}))
       const parsed = cancelBookingSchema.safeParse(body)
       const result = await this.service.cancelBookingAsHost(id, hostProfileId, parsed.data?.reason)
       return c.json({ success: true, data: result })
@@ -359,7 +359,7 @@ export class BookingController {
   // ─── Host: Booking Request management ────────────────────────────────────
 
   // GET /api/v1/host/booking-requests
-  async getHostRequests(c: Context) {
+  async getHostRequests(c: Context): Promise<Response> {
     try {
       const authUser      = c.get('authUser')
       const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
@@ -389,7 +389,7 @@ export class BookingController {
   }
 
   // GET /api/v1/host/booking-requests/pending
-  async getPendingRequests(c: Context) {
+  async getPendingRequests(c: Context): Promise<Response> {
     try {
       const authUser      = c.get('authUser')
       const hostProfileId = await this.resolveHostProfileId(authUser.dbUserId)
@@ -420,7 +420,7 @@ export class BookingController {
   async approveRequest(c: Context) {
     const authUser = c.get('authUser')
     const id       = c.req.param('id') as string
-    const body     = await c.req.json().catch(() => ({}))
+    const body     = await c.req.raw.json().catch(() => ({}))
     const parsed   = approveRequestSchema.safeParse(body)
 
     try {
@@ -439,7 +439,7 @@ export class BookingController {
   async declineRequest(c: Context) {
     const authUser = c.get('authUser')
     const id       = c.req.param('id') as string
-    const body     = await c.req.json()
+    const body     = await c.req.raw.json()
     const parsed   = declineRequestSchema.safeParse(body)
 
     if (!parsed.success) {
@@ -464,7 +464,7 @@ export class BookingController {
   // POST /api/v1/host/booking-requests/pre-approve
   async preApproveRequest(c: Context) {
     const authUser = c.get('authUser')
-    const body     = await c.req.json()
+    const body     = await c.req.raw.json()
     const parsed   = preApproveSchema.safeParse(body)
 
     if (!parsed.success) {

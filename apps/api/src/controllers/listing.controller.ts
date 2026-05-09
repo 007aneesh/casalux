@@ -14,12 +14,19 @@ import { ListingRepository } from '../repositories/listing.repository.js'
 const sharedRepo = new ListingRepository()
 
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
+// City + country are the only fields the search index and UX actually depend
+// on. Street / state / zip are useful for the host but optional at draft-
+// create time — many listings have no meaningful "state" (city-states), and
+// Indian PIN codes are commonly skipped. The web form's step-1 validation
+// also only requires city + country (host/listings/new/page.tsx canNext()),
+// so requiring more here produces a 400 with no path for the user to recover.
+// Keep this loose at draft creation; tighten on publish if you need it.
 const addressSchema = z.object({
-  street:  z.string().min(1),
-  city:    z.string().min(1),
-  state:   z.string().min(1),
-  country: z.string().min(1),
-  zip:     z.string().min(1),
+  street:  z.string().optional().default(''),
+  city:    z.string().min(1, 'City is required'),
+  state:   z.string().optional().default(''),
+  country: z.string().min(1, 'Country is required'),
+  zip:     z.string().optional().default(''),
 })
 
 const createListingSchema = z.object({
@@ -229,7 +236,7 @@ export class ListingController {
     console.log('[controller.createListing] authUser', { dbUserId: authUser?.dbUserId })
     
     console.log('[controller.createListing] parsing body')
-    const body = await c.req.json()
+    const body = await c.req.raw.json()
     console.log('[controller.createListing] body parsed')
     const parsed   = createListingSchema.safeParse(body)
 
@@ -289,7 +296,7 @@ export class ListingController {
   async updateListing(c: Context) {
     const authUser = c.get('authUser')
     const id   = c.req.param('id') as string
-    const body     = await c.req.json()
+    const body     = await c.req.raw.json()
     const parsed   = updateListingSchema.safeParse(body)
 
     if (!parsed.success) {
@@ -318,7 +325,7 @@ export class ListingController {
   async updateStatus(c: Context) {
     const authUser = c.get('authUser')
     const id   = c.req.param('id') as string
-    const body     = await c.req.json()
+    const body     = await c.req.raw.json()
     const parsed   = updateStatusSchema.safeParse(body)
 
     if (!parsed.success) {
@@ -341,7 +348,7 @@ export class ListingController {
   async updateAvailability(c: Context) {
     const authUser = c.get('authUser')
     const id   = c.req.param('id') as string
-    const body     = await c.req.json()
+    const body     = await c.req.raw.json()
 
     const schema = z.object({ rules: z.array(availabilityRuleSchema) })
     const parsed = schema.safeParse(body)

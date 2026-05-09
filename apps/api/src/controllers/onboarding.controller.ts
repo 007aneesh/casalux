@@ -126,7 +126,7 @@ export class OnboardingController {
   /** PATCH /host/onboarding/:sessionId/space */
   async saveSpace(c: Context): Promise<Response> {
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = spaceSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
@@ -142,7 +142,7 @@ export class OnboardingController {
   /** PATCH /host/onboarding/:sessionId/amenities */
   async saveAmenities(c: Context): Promise<Response> {
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = amenitiesSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
@@ -158,7 +158,7 @@ export class OnboardingController {
   /** POST /host/onboarding/:sessionId/photos */
   async savePhotos(c: Context): Promise<Response> {
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = photosSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
@@ -174,7 +174,7 @@ export class OnboardingController {
   /** PATCH /host/onboarding/:sessionId/details */
   async saveDetails(c: Context): Promise<Response> {
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = detailsSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
@@ -190,7 +190,7 @@ export class OnboardingController {
   /** PATCH /host/onboarding/:sessionId/pricing */
   async savePricing(c: Context): Promise<Response> {
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = pricingSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
@@ -206,7 +206,7 @@ export class OnboardingController {
   /** PATCH /host/onboarding/:sessionId/availability */
   async saveAvailability(c: Context): Promise<Response> {
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = availabilitySchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
@@ -271,7 +271,7 @@ export class OnboardingController {
   /** POST /admin/host-applications/:sessionId/reject */
   async reject(c: Context): Promise<Response> {
     try {
-      const body   = await c.req.json() as unknown
+      const body   = await c.req.raw.json() as unknown
       const parsed = rejectSchema.safeParse(body)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 

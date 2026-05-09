@@ -26,7 +26,7 @@ const signSchema = z.object({
 
 // Sign is auth-only — guests need it during onboarding before they become a host
 uploadsRouter.post('/sign', requireAuth(), async (c) => {
-  const body   = await c.req.json()
+  const body   = await c.req.raw.json()
   const parsed = signSchema.safeParse(body)
   if (!parsed.success) {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', details: parsed.error.flatten() } }, 400)
@@ -80,7 +80,7 @@ const confirmSchema = z.object({
 
 // Confirm requires host role — stores to DB and is only called from host listing edit flows
 uploadsRouter.post('/confirm', requireAuth(), requireRole('host'), async (c) => {
-  const body   = await c.req.json()
+  const body   = await c.req.raw.json()
   const parsed = confirmSchema.safeParse(body)
   if (!parsed.success) {
     return c.json({ success: false, error: { code: 'VALIDATION_ERROR', details: parsed.error.flatten() } }, 400)

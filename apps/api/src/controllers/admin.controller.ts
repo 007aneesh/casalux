@@ -91,7 +91,7 @@ export class AdminController {
   async addCustomAmenity(c: Context): Promise<Response> {
     try {
       const id   = c.req.param('id') as string
-      const body = await c.req.json() as { name?: string }
+      const body = await c.req.raw.json() as { name?: string }
       const name = body.name?.trim()
       if (!name) return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'name is required' } }, 400)
 
@@ -124,7 +124,7 @@ export class AdminController {
     try {
       const id      = c.req.param('id') as string
       const authUser = c.get('authUser') as { clerkId: string }
-      const body    = await c.req.json() as { status: string }
+      const body    = await c.req.raw.json() as { status: string }
       const before  = await db.listing.findUnique({ where: { id }, select: { status: true } })
       const listing = await db.listing.update({
         where: { id },
@@ -255,7 +255,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { reason?: string; refundAmount?: number }
+      const body     = await c.req.raw.json() as { reason?: string; refundAmount?: number }
 
       const booking = await db.booking.findUnique({ where: { id }, select: { id: true, status: true, totalAmount: true } })
       if (!booking) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404)
@@ -291,7 +291,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { refundAmount: number; refundStatus: string }
+      const body     = await c.req.raw.json() as { refundAmount: number; refundStatus: string }
 
       const validStatuses = ['none', 'requested', 'partial', 'full', 'processed']
       if (!validStatuses.includes(body.refundStatus)) {
@@ -319,7 +319,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { payoutStatus: string }
+      const body     = await c.req.raw.json() as { payoutStatus: string }
 
       const validStatuses = ['pending', 'initiated', 'settled']
       if (!validStatuses.includes(body.payoutStatus)) {
@@ -347,7 +347,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { disputed: boolean; reason?: string }
+      const body     = await c.req.raw.json() as { disputed: boolean; reason?: string }
 
       const booking = await db.booking.findUnique({ where: { id }, select: { id: true, status: true } })
       if (!booking) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404)
@@ -378,7 +378,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { status: string; reason?: string }
+      const body     = await c.req.raw.json() as { status: string; reason?: string }
 
       if (!VALID_STATUSES.includes(body.status)) {
         return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: `status must be one of: ${VALID_STATUSES.join(', ')}` } }, 400)
@@ -536,7 +536,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { reason?: string }
+      const body     = await c.req.raw.json() as { reason?: string }
 
       const target = await db.user.findUnique({ where: { id }, select: { role: true, isBanned: true, clerkId: true } })
       if (!target) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }, 404)
@@ -579,7 +579,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { verified: boolean }
+      const body     = await c.req.raw.json() as { verified: boolean }
 
       const status = body.verified ? 'verified' : 'unverified'
       const target = await db.user.findUnique({ where: { id }, select: { verificationStatus: true } })
@@ -600,7 +600,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { role: string }
+      const body     = await c.req.raw.json() as { role: string }
 
       const allowed = ['guest', 'host', 'admin', 'super_admin']
       if (!allowed.includes(body.role)) {
@@ -638,7 +638,7 @@ export class AdminController {
     try {
       const id       = c.req.param('id') as string
       const authUser = c.get('authUser')
-      const body     = await c.req.json() as { grant: boolean }
+      const body     = await c.req.raw.json() as { grant: boolean }
 
       const user = await db.user.findUnique({ where: { id }, include: { hostProfile: true } })
       if (!user) return c.json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }, 404)

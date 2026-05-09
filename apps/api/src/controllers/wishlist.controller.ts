@@ -33,7 +33,7 @@ export class WishlistController {
   async createWishlist(c: Context): Promise<Response> {
     const schema = z.object({ name: z.string().min(1).max(100) })
     try {
-      const parsed = schema.safeParse(await c.req.json() as unknown)
+      const parsed = schema.safeParse(await c.req.raw.json() as unknown)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
       const clerkId  = c.get('userId') as string
@@ -79,7 +79,7 @@ export class WishlistController {
   async updateWishlist(c: Context): Promise<Response> {
     const schema = z.object({ name: z.string().min(1).max(100) })
     try {
-      const parsed = schema.safeParse(await c.req.json() as unknown)
+      const parsed = schema.safeParse(await c.req.raw.json() as unknown)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
       const clerkId    = c.get('userId') as string
@@ -107,7 +107,7 @@ export class WishlistController {
   async addListing(c: Context): Promise<Response> {
     const schema = z.object({ listingId: z.string().min(1) })
     try {
-      const parsed = schema.safeParse(await c.req.json() as unknown)
+      const parsed = schema.safeParse(await c.req.raw.json() as unknown)
       if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
 
       const clerkId    = c.get('userId') as string

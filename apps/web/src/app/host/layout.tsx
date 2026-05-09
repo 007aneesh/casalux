@@ -75,14 +75,26 @@ export default function HostLayout({ children }: { children: React.ReactNode }) 
   const isApplicationPending   = pathname === '/host/application-pending'
   const isUnguardedHostRoute   = isOnboardingRoute || isApplicationPending
 
-  // Client-side guard: non-hosts hitting dashboard/listings/etc get redirected
+  // Client-side guard for the host area.
+  //   • Anonymous visitor  → bounce to /sign-in, preserving the destination.
+  //   • Signed-in non-host → bounce to /become-a-host (onboarding entry).
+  //   • Host / admin       → fall through, render the host UI.
+  //
+  // Previously this only redirected when `user && role !== host`, which left
+  // anonymous visitors stuck on a blank page (the render branch below returns
+  // null for !user). Pair with the server middleware in src/middleware.ts —
+  // either guard alone is enough, but both run defensively.
   useEffect(() => {
     if (!isLoaded || isUnguardedHostRoute) return
-    const role = user?.publicMetadata?.role as string | undefined
-    if (user && role !== 'host' && role !== 'admin') {
+    if (!user) {
+      router.replace(`/sign-in?redirect_url=${encodeURIComponent(pathname)}`)
+      return
+    }
+    const role = user.publicMetadata?.role as string | undefined
+    if (role !== 'host' && role !== 'admin' && role !== 'super_admin') {
       router.replace('/become-a-host')
     }
-  }, [isLoaded, user, router, isOnboardingRoute])
+  }, [isLoaded, user, router, pathname, isUnguardedHostRoute])
 
   // Onboarding + application-pending use a plain layout (no sidebar, no role guard)
   if (isUnguardedHostRoute) {

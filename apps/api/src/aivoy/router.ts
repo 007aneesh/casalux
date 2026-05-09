@@ -55,9 +55,14 @@ aivoyRouter.post('/tools/:name', async (c) => {
     )
   }
 
-  // We need the RAW body to verify the signature. Hono exposes it via .text();
-  // we then parse to JSON ourselves.
-  const rawBody = await c.req.text()
+  // We need the RAW body to verify the HMAC signature.
+  //
+  // NOTE: do NOT use `c.req.text()` here. On Vercel via @hono/node-server's
+  // adapter, `c.req.text()` hangs forever on POST bodies (the adapter wraps
+  // IncomingMessage in a way that confuses Hono's lazy body parser). Reading
+  // straight from the underlying Web Request via `c.req.raw` avoids the
+  // wrapper entirely and works reliably across runtimes.
+  const rawBody = await c.req.raw.text()
 
   try {
     verifyAivoySignature({
