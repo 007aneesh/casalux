@@ -214,8 +214,9 @@ export default function NewListingPage() {
       } else {
         setError('Failed to create listing. Please try again.')
       }
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      setError(msg)
     } finally {
       setSubmitting(false)
     }

@@ -720,17 +720,23 @@ async createListing(dbUserId: string, data: CreateListingInput): Promise<Listing
     const apiKey = process.env['GOOGLE_MAPS_API_KEY']
     if (!apiKey) return { lat: 0, lng: 0 }
 
+    // Hard-cap the upstream call so a slow/unreachable Google Geocoding API
+    // can't blow past the serverless function's maxDuration. We fall back to
+    // {0,0} on any failure — geocoding is best-effort during draft creation.
     try {
       const addr  = address as Record<string, string>
       const query = encodeURIComponent(`${addr['street']}, ${addr['city']}, ${addr['country']}`)
       const resp  = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${apiKey}`
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${apiKey}`,
+        { signal: AbortSignal.timeout(4000) }
       )
       const data  = await resp.json() as { results: Array<{ geometry: { location: { lat: number; lng: number } } }>; status: string }
       if (data.status === 'OK' && data.results[0]) {
         return data.results[0].geometry.location
       }
-    } catch { /* fall through */ }
+    } catch (err) {
+      console.warn('[geocodeAddress] failed, defaulting to 0,0', err instanceof Error ? err.message : err)
+    }
 
     return { lat: 0, lng: 0 }
   }

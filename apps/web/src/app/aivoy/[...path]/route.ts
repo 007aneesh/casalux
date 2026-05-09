@@ -100,11 +100,11 @@ async function proxy(req: NextRequest, path: string[]): Promise<Response> {
   })
 }
 
-type Ctx = { params: Promise<{ path: string[] }> }
+// Next.js 14: `params` is a sync object, not a Promise. (Next 15 made it async.)
+type Ctx = { params: { path: string[] } }
 
 async function handler(req: NextRequest, ctx: Ctx): Promise<Response> {
-  const { path } = await ctx.params
-  return proxy(req, path ?? [])
+  return proxy(req, ctx.params.path ?? [])
 }
 
 export const GET = handler
