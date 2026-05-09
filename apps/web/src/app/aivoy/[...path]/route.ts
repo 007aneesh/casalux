@@ -88,9 +88,19 @@ async function proxy(req: NextRequest, path: string[]): Promise<Response> {
   // Strip hop-by-hop headers from the response too, then stream the body
   // back to the browser. Critically: do NOT buffer — the chat endpoint
   // returns Server-Sent Events that must arrive token-by-token.
+  //
+  // Also strip `content-encoding` and `content-length`: undici (Node's fetch)
+  // auto-decompresses brotli/gzip bodies, so by the time we forward them the
+  // body is plain text. Forwarding the original `content-encoding: br` header
+  // makes the browser try to brotli-decode plain text, which corrupts the
+  // first few bytes (caused `Unexpected token '*'` on loader.js).
+  // `content-length` is recomputed by the framework when streaming.
   const respHeaders = new Headers()
   upstream.headers.forEach((value, key) => {
-    if (!HOP_BY_HOP.has(key.toLowerCase())) respHeaders.set(key, value)
+    const k = key.toLowerCase()
+    if (HOP_BY_HOP.has(k)) return
+    if (k === 'content-encoding' || k === 'content-length') return
+    respHeaders.set(key, value)
   })
 
   return new Response(upstream.body, {
